@@ -95,31 +95,31 @@ export class SpotifyService {
    */
   convertTracksToSongs(spotifyTracks: SpotifyTrack[]): Song[] {
     return spotifyTracks.map(track => {
-      const artistNames = track.artists.map(a => a.name).join(', ');
-      const imageUrl = track.album.images[0]?.url;
+        const artistNames = track.artists.map(a => a.name).join(', ');
+        const imageUrl = track.album.images[0]?.url;
 
-      const metadata: SongMetadata = {
-        title: track.name,
-        artist: artistNames,
-        album: track.album.name,
-        duration: Math.floor(track.duration_ms / 1000), // Convert to seconds
-        imageUrl,
-      };
-
-      const song: Song = {
-        id: randomUUID(),
-        spotifyTrackId: track.id,
-        spotifyUri: track.uri,
-        metadata,
-        answer: {
+        const metadata: SongMetadata = {
           title: track.name,
           artist: artistNames,
-        },
-        previewUrl: track.preview_url,
-      };
+          album: track.album.name,
+          duration: Math.floor(track.duration_ms / 1000), // Convert to seconds
+          imageUrl,
+        };
 
-      return song;
-    });
+        const song: Song = {
+          id: randomUUID(),
+          spotifyTrackId: track.id,
+          spotifyUri: track.uri,
+          metadata,
+          answer: {
+            title: track.name,
+            artist: artistNames,
+          },
+          previewUrl: track.preview_url!,
+        };
+
+        return song;
+      });
   }
 
   /**

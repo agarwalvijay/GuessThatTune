@@ -13,6 +13,7 @@ import KeepAwake from 'react-native-keep-awake';
 import { useAppStore } from '../store/appStore';
 import { socketService } from '../services/socketService';
 import { apiService } from '../services/ApiService';
+import { spotifyPlaybackService } from '../services/SpotifyPlaybackService';
 import type { BuzzerEvent, GameSession } from '@song-quiz/shared';
 
 interface GameControlScreenProps {
@@ -26,6 +27,23 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
   const [buzzerEvents, setBuzzerEvents] = useState<Array<BuzzerEvent & { position: number }>>([]);
   const [isAwarding, setIsAwarding] = useState(false);
   const [isNexting, setIsNexting] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Auto-play song when round changes
+  useEffect(() => {
+    const currentRound = gameSession?.rounds[gameSession.currentRoundIndex];
+    const currentSong = gameSession?.songs[gameSession.currentRoundIndex];
+
+    if (currentRound && currentSong && !currentRound.isComplete) {
+      playCurrentSong();
+    }
+
+    return () => {
+      // Cleanup audio when unmounting
+      spotifyPlaybackService.stop();
+    };
+  }, [gameSession?.currentRoundIndex]);
 
   // Listen for buzzer events
   useEffect(() => {
@@ -89,10 +107,16 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
       setIsNexting(true);
       console.log('⏭️  Moving to next round...');
 
+      // Stop current audio
+      spotifyPlaybackService.stop();
+      setIsPlaying(false);
+
       const result = await apiService.nextRound(gameSession.id);
 
       if (result.gameComplete) {
-        // Game is complete, navigate to results
+        // Game is complete, stop playback and navigate to results
+        await spotifyPlaybackService.pause();
+        spotifyPlaybackService.stop();
         onGameEnded();
       } else {
         // Clear buzzer events for new round
@@ -118,6 +142,12 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
           onPress: async () => {
             try {
               console.log('🏁 Ending game...');
+
+              // Stop playback
+              await spotifyPlaybackService.pause();
+              spotifyPlaybackService.stop();
+              setIsPlaying(false);
+
               await apiService.endGame(gameSession.id);
               onGameEnded();
             } catch (error) {
@@ -128,6 +158,69 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
         },
       ]
     );
+  };
+
+  const playCurrentSong = async () => {
+    const currentRound = gameSession?.rounds[gameSession.currentRoundIndex];
+    const currentSong = gameSession?.songs[gameSession.currentRoundIndex];
+
+    if (!currentRound || !currentSong) return;
+
+    try {
+      setIsLoading(true);
+
+      // Get start offset from round (may be random)
+      const startOffsetSeconds = currentRound.songStartOffset || 0;
+      const startOffsetMs = Math.floor(startOffsetSeconds * 1000);
+
+      // Get play duration from game settings
+      const durationSeconds = gameSession.settings.songDuration;
+
+      console.log('🎵 Playing song:', currentSong.answer.title);
+      console.log('Spotify URI:', currentSong.spotifyUri);
+      console.log('Start offset:', startOffsetSeconds, 'seconds');
+      console.log('Duration:', durationSeconds, 'seconds');
+
+      // Play on user's active Spotify device
+      await spotifyPlaybackService.play(
+        currentSong.spotifyUri,
+        undefined, // Let Spotify use the active device
+        startOffsetMs,
+        durationSeconds
+      );
+
+      setIsPlaying(true);
+      setIsLoading(false);
+    } catch (error: any) {
+      console.error('Error playing song:', error);
+      const errorMessage = error.message || 'Failed to play the song';
+      Alert.alert('Playback Error', errorMessage);
+      setIsLoading(false);
+      setIsPlaying(false);
+    }
+  };
+
+  const handlePlayPause = async () => {
+    if (isPlaying) {
+      await spotifyPlaybackService.pause();
+      setIsPlaying(false);
+    } else {
+      // Check if already playing - if so, resume
+      const state = await spotifyPlaybackService.getPlaybackState();
+      if (state && !state.is_playing) {
+        await spotifyPlaybackService.resume();
+        setIsPlaying(true);
+      } else {
+        // Start fresh playback
+        playCurrentSong();
+      }
+    }
+  };
+
+  const handleStop = async () => {
+    await spotifyPlaybackService.pause();
+    spotifyPlaybackService.stop();
+    setIsPlaying(false);
   };
 
   const handleOpenInSpotify = async () => {
@@ -168,14 +261,37 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
           <View style={styles.songInfo}>
             <Text style={styles.songTitle}>{currentSong?.answer.title || currentSong?.metadata.title || 'Unknown'}</Text>
             <Text style={styles.songArtist}>{currentSong?.answer.artist || currentSong?.metadata.artist || 'Unknown'}</Text>
+            {currentRound?.songStartOffset !== undefined && (
+              <Text style={styles.offsetText}>
+                Start offset: {currentRound.songStartOffset.toFixed(1)}s
+              </Text>
+            )}
           </View>
-          <TouchableOpacity
-            style={styles.playButton}
-            onPress={handleOpenInSpotify}
-          >
-            <Text style={styles.playButtonText}>🎵</Text>
-            <Text style={styles.playButtonLabel}>Play</Text>
-          </TouchableOpacity>
+          <View style={styles.playbackControls}>
+            <TouchableOpacity
+              style={[styles.controlButton, isLoading && styles.controlButtonDisabled]}
+              onPress={handlePlayPause}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.controlButtonText}>{isPlaying ? '⏸' : '▶️'}</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleStop}
+            >
+              <Text style={styles.controlButtonText}>⏹</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.controlButton, styles.spotifyButton]}
+              onPress={handleOpenInSpotify}
+            >
+              <Text style={styles.controlButtonText}>🎵</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -302,12 +418,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
   songInfo: {
     flex: 1,
+    marginBottom: 16,
   },
   songTitle: {
     fontSize: 20,
@@ -318,24 +432,40 @@ const styles = StyleSheet.create({
   songArtist: {
     fontSize: 16,
     color: '#666',
+    marginBottom: 4,
   },
-  playButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-    backgroundColor: '#1DB954',
+  offsetText: {
+    fontSize: 13,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  playbackControls: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+  },
+  controlButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#667eea',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  playButtonText: {
+  controlButtonDisabled: {
+    opacity: 0.6,
+  },
+  controlButtonText: {
     fontSize: 24,
-    marginBottom: 2,
-  },
-  playButtonLabel: {
-    fontSize: 11,
     color: '#fff',
-    fontWeight: '600',
+  },
+  spotifyButton: {
+    backgroundColor: '#1DB954',
   },
   emptyState: {
     backgroundColor: '#fff',

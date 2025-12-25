@@ -50,6 +50,8 @@ router.get('/playlist/:playlistId/tracks', async (req: Request, res: Response) =
     const spotifyTracks = await spotifyService.getPlaylistTracks(accessToken, playlistId);
     const songs = spotifyService.convertTracksToSongs(spotifyTracks);
 
+    console.log(`✅ Loaded ${songs.length} songs from playlist`);
+
     return res.json({
       tracks: spotifyTracks,
       songs,

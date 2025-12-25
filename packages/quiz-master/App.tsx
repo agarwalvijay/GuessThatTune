@@ -102,7 +102,11 @@ function App(): React.JSX.Element {
                     // Reset game session
                     const store = useAppStore.getState();
                     store.setGameSession(null);
-                    props.navigation.navigate('PlaylistSelection');
+                    // Reset navigation stack to PlaylistSelection
+                    props.navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'PlaylistSelection' }],
+                    });
                   }}
                 />
               )}
