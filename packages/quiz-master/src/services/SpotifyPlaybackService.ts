@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Linking } from 'react-native';
 import { spotifyAuthService } from './SpotifyAuthService';
 
 interface SpotifyDevice {
@@ -34,15 +35,18 @@ class SpotifyPlaybackService {
     }
 
     try {
+      console.log('🔍 Fetching Spotify devices...');
       const response = await axios.get('https://api.spotify.com/v1/me/player/devices', {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
 
-      return response.data.devices || [];
-    } catch (error) {
-      console.error('Error getting devices:', error);
+      const devices = response.data.devices || [];
+      console.log('✅ Devices API response:', devices.length, 'devices found');
+      return devices;
+    } catch (error: any) {
+      console.error('❌ Error getting devices:', error.response?.status, error.response?.data || error.message);
       throw error;
     }
   }
@@ -72,10 +76,50 @@ class SpotifyPlaybackService {
       this.currentTrackUri = trackUri;
 
       // Get available devices
-      const devices = await this.getDevices();
+      let devices = await this.getDevices();
+      console.log('📱 Available Spotify devices:', devices.length);
+      devices.forEach(device => {
+        console.log(`  - ${device.name} (${device.type}) - Active: ${device.is_active}`);
+      });
 
+      // If no devices found, try to open Spotify and check again
       if (devices.length === 0) {
-        throw new Error('No Spotify devices found. Please open Spotify on your phone or computer first.');
+        console.log('🎵 No devices found, attempting to open Spotify...');
+
+        try {
+          // Open Spotify app
+          const spotifyUrl = 'spotify://';
+          const canOpen = await Linking.canOpenURL(spotifyUrl);
+
+          if (canOpen) {
+            await Linking.openURL(spotifyUrl);
+            console.log('✅ Opened Spotify app, waiting for device to be available...');
+
+            // Poll for devices with multiple retries
+            let attempts = 0;
+            const maxAttempts = 6;
+
+            while (attempts < maxAttempts && devices.length === 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              devices = await this.getDevices();
+              attempts++;
+              console.log(`🔄 Retry ${attempts}/${maxAttempts}: ${devices.length} devices found`);
+            }
+
+            if (devices.length === 0) {
+              throw new Error('Spotify is open but no devices detected.\n\nPlease:\n1. Make sure you\'re logged into the same account\n2. Play any song in Spotify briefly\n3. Then return here and try again');
+            }
+
+            console.log('✅ Device found after', attempts, 'attempts');
+          } else {
+            throw new Error('Spotify app is not installed on this device.\n\nPlease install Spotify or open it on another device (phone/computer).');
+          }
+        } catch (launchError: any) {
+          if (launchError.message.includes('Spotify')) {
+            throw launchError;
+          }
+          throw new Error('Could not open Spotify automatically.\n\nPlease open Spotify manually and try again.');
+        }
       }
 
       // Find an active device or use the first available one
@@ -92,27 +136,48 @@ class SpotifyPlaybackService {
       // If device is not active, we need to transfer playback to it first
       if (!targetDevice.is_active) {
         console.log('📱 Transferring playback to device:', targetDevice.name);
-        await this.transferPlayback(targetDevice.id, true);
-        // Wait a moment for transfer to complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await this.transferPlayback(targetDevice.id, false);
+        // Wait longer for transfer to complete and device to be ready
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
-      // Start playback
+      // Start playback with retry logic
       const url = `https://api.spotify.com/v1/me/player/play?device_id=${targetDevice.id}`;
+      let playbackStarted = false;
+      let lastError;
 
-      await axios.put(
-        url,
-        {
-          uris: [trackUri],
-          position_ms: startPositionMs,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          await axios.put(
+            url,
+            {
+              uris: [trackUri],
+              position_ms: startPositionMs,
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          playbackStarted = true;
+          break;
+        } catch (error: any) {
+          lastError = error;
+          if (error.response?.status === 404 && attempt === 1) {
+            console.log('⚠️ 404 error, device not ready yet. Retrying...');
+            // Device exists but not ready, wait and retry
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            throw error;
+          }
         }
-      );
+      }
+
+      if (!playbackStarted && lastError) {
+        throw lastError;
+      }
 
       console.log('✅ Playback started:', trackUri);
       console.log('Start position:', startPositionMs / 1000, 'seconds');

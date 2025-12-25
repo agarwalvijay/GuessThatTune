@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
+  Animated,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import KeepAwake from 'react-native-keep-awake';
 import { useAppStore } from '../store/appStore';
 import { socketService } from '../services/socketService';
@@ -29,6 +31,9 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
   const [isNexting, setIsNexting] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   // Auto-play song when round changes
   useEffect(() => {
@@ -39,11 +44,52 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
       playCurrentSong();
     }
 
+    // Reset reveal state when round changes
+    setIsRevealed(false);
+    setElapsedSeconds(0);
+    progressAnim.setValue(0);
+
     return () => {
       // Cleanup audio when unmounting
       spotifyPlaybackService.stop();
     };
   }, [gameSession?.currentRoundIndex]);
+
+  // Timer and progress bar effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (isPlaying && gameSession) {
+      const durationSeconds = gameSession.settings.songDuration;
+
+      interval = setInterval(() => {
+        setElapsedSeconds((prev) => {
+          const next = prev + 0.1;
+          if (next >= durationSeconds) {
+            return durationSeconds;
+          }
+          return next;
+        });
+      }, 100);
+
+      // Animate progress bar
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: durationSeconds * 1000,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      if (interval) {
+        clearInterval(interval);
+      }
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isPlaying, gameSession]);
 
   // Listen for buzzer events
   useEffect(() => {
@@ -221,6 +267,8 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
     await spotifyPlaybackService.pause();
     spotifyPlaybackService.stop();
     setIsPlaying(false);
+    setElapsedSeconds(0);
+    progressAnim.setValue(0);
   };
 
   const handleOpenInSpotify = async () => {
@@ -248,52 +296,94 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <KeepAwake />
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Round {songNumber} of {totalSongs}</Text>
-        <Text style={styles.sessionId}>Session: {gameSession.id.substring(0, 8)}</Text>
-      </View>
 
-      {/* Current Song Info */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Current Song</Text>
-        <View style={styles.songCard}>
+      {/* Top spacing */}
+      <View style={styles.topSpacer} />
+
+      {/* App Title */}
+      <Text style={styles.appTitle}>SongGame</Text>
+
+      {/* Playback Card with Gradient */}
+      <LinearGradient
+        colors={['#667eea', '#764ba2']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.playbackCard}
+      >
+        {/* Round Badge */}
+        <View style={styles.roundBadge}>
+          <Text style={styles.roundBadgeText}>Round {songNumber}/{totalSongs}</Text>
+        </View>
+
+        {/* Playback Controls */}
+        <View style={styles.playbackControls}>
+          <TouchableOpacity
+            style={[styles.controlButton, isLoading && styles.controlButtonDisabled]}
+            onPress={handlePlayPause}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#667eea" size="small" />
+            ) : isPlaying ? (
+              <View style={styles.pauseIcon}>
+                <View style={styles.pauseBar} />
+                <View style={styles.pauseBar} />
+              </View>
+            ) : (
+              <View style={styles.playIcon} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={handleStop}
+          >
+            <View style={styles.stopIcon} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Timer and Progress Bar */}
+        <View style={styles.timerSection}>
+          <Text style={styles.timerText}>
+            {elapsedSeconds.toFixed(1)}s / {gameSession.settings.songDuration}s
+          </Text>
+          <View style={styles.progressBarContainer}>
+            <Animated.View
+              style={[
+                styles.progressBar,
+                {
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  }),
+                },
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* Reveal/Hide Song Info */}
+        <TouchableOpacity
+          style={styles.revealButton}
+          onPress={() => setIsRevealed(!isRevealed)}
+        >
+          <Text style={styles.revealButtonText}>
+            {isRevealed ? 'Hide' : 'Reveal'} Song
+          </Text>
+        </TouchableOpacity>
+
+        {isRevealed && currentSong && (
           <View style={styles.songInfo}>
-            <Text style={styles.songTitle}>{currentSong?.answer.title || currentSong?.metadata.title || 'Unknown'}</Text>
-            <Text style={styles.songArtist}>{currentSong?.answer.artist || currentSong?.metadata.artist || 'Unknown'}</Text>
+            <Text style={styles.songTitle}>{currentSong.answer.title}</Text>
+            <Text style={styles.songArtist}>{currentSong.answer.artist}</Text>
             {currentRound?.songStartOffset !== undefined && (
-              <Text style={styles.offsetText}>
-                Start offset: {currentRound.songStartOffset.toFixed(1)}s
+              <Text style={styles.songOffset}>
+                Start: {currentRound.songStartOffset.toFixed(1)}s
               </Text>
             )}
           </View>
-          <View style={styles.playbackControls}>
-            <TouchableOpacity
-              style={[styles.controlButton, isLoading && styles.controlButtonDisabled]}
-              onPress={handlePlayPause}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.controlButtonText}>{isPlaying ? '⏸' : '▶️'}</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.controlButton}
-              onPress={handleStop}
-            >
-              <Text style={styles.controlButtonText}>⏹</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.controlButton, styles.spotifyButton]}
-              onPress={handleOpenInSpotify}
-            >
-              <Text style={styles.controlButtonText}>🎵</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+        )}
+      </LinearGradient>
 
       {/* Buzzer Events */}
       <View style={styles.section}>
@@ -379,76 +469,58 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
-  header: {
-    backgroundColor: '#667eea',
-    borderRadius: 12,
+  topSpacer: {
+    height: 20,
+  },
+  appTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#667eea',
+    marginBottom: 16,
+    letterSpacing: -0.5,
+  },
+  playbackCard: {
+    borderRadius: 20,
     padding: 20,
     marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  sessionId: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  songCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  songInfo: {
-    flex: 1,
+  roundBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
     marginBottom: 16,
   },
-  songTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 8,
-  },
-  songArtist: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 4,
-  },
-  offsetText: {
+  roundBadgeText: {
     fontSize: 13,
-    color: '#999',
-    fontStyle: 'italic',
+    fontWeight: '700',
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   playbackControls: {
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
+    marginBottom: 20,
   },
   controlButton: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#667eea',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -458,63 +530,160 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   controlButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
-  controlButtonText: {
-    fontSize: 24,
+  playIcon: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 14,
+    borderRightWidth: 0,
+    borderTopWidth: 9,
+    borderBottomWidth: 9,
+    borderLeftColor: '#667eea',
+    borderRightColor: 'transparent',
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    marginLeft: 3,
+  },
+  pauseIcon: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  pauseBar: {
+    width: 4,
+    height: 18,
+    backgroundColor: '#667eea',
+    borderRadius: 2,
+  },
+  stopIcon: {
+    width: 16,
+    height: 16,
+    backgroundColor: '#667eea',
+    borderRadius: 2,
+  },
+  timerSection: {
+    marginBottom: 16,
+  },
+  timerText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  spotifyButton: {
-    backgroundColor: '#1DB954',
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 3,
+  },
+  revealButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  revealButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  songInfo: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  songTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  songArtist: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 8,
+  },
+  songOffset: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontWeight: '600',
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   emptyState: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 40,
+    padding: 32,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#999',
   },
   buzzerList: {
-    gap: 12,
+    gap: 8,
   },
   buzzerCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   buzzerCardFirst: {
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
     borderLeftColor: '#ffd700',
   },
   buzzerCardWinner: {
-    backgroundColor: '#d4edda',
-    borderColor: '#28a745',
-    borderWidth: 2,
+    backgroundColor: '#f0f9f4',
+    borderColor: '#34d399',
+    borderWidth: 1.5,
   },
   buzzerPosition: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#667eea',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   buzzerPositionText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
   },
@@ -522,45 +691,48 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   buzzerName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    color: '#1a1a1a',
+    marginBottom: 2,
   },
   buzzerTime: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#999',
   },
   winnerBadge: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#28a745',
+    color: '#10b981',
   },
   scoresList: {
     backgroundColor: '#fff',
     borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   scoreCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#f5f5f5',
   },
   scoreName: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#1a1a1a',
+    fontWeight: '500',
   },
   scorePoints: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#667eea',
   },
   controls: {
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 40,
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 32,
   },
   button: {
     padding: 16,
@@ -572,20 +744,20 @@ const styles = StyleSheet.create({
   },
   endButton: {
     backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#dc3545',
+    borderWidth: 1.5,
+    borderColor: '#ef4444',
   },
   buttonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#fff',
   },
   endButtonText: {
-    color: '#dc3545',
+    color: '#ef4444',
   },
   errorText: {
-    fontSize: 18,
-    color: '#dc3545',
+    fontSize: 16,
+    color: '#ef4444',
     textAlign: 'center',
     marginTop: 40,
   },
