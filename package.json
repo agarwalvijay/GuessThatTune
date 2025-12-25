@@ -1,0 +1,25 @@
+{
+  "name": "song-quiz-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-player music quiz game with React Native quiz master app and React participant web app",
+  "workspaces": [
+    "packages/backend",
+    "packages/participant-web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:quiz": "npm run start --workspace=quiz-master",
+    "dev:web": "npm run dev --workspace=participant-web",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

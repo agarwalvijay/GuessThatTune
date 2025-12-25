@@ -1,0 +1,121 @@
+.waiting-room {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.waiting-container {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.waiting-title {
+  font-size: 4rem;
+  margin-bottom: 10px;
+}
+
+.waiting-subtitle {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 30px;
+  font-weight: 700;
+}
+
+.participant-info {
+  margin-bottom: 30px;
+}
+
+.your-name {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.connection-status {
+  font-size: 1rem;
+  color: #666;
+}
+
+.session-info-box {
+  background: #f0f0f0;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.session-label {
+  font-size: 0.9rem;
+  color: #999;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.session-id {
+  font-size: 1.2rem;
+  color: #333;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.participants-count {
+  margin-bottom: 30px;
+}
+
+.count-number {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #667eea;
+  margin-bottom: 5px;
+}
+
+.count-label {
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.waiting-animation {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background: #667eea;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+.waiting-message {
+  font-size: 1rem;
+  color: #999;
+  line-height: 1.6;
+}
