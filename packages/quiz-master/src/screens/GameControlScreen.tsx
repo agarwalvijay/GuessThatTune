@@ -34,6 +34,7 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
   const [isRevealed, setIsRevealed] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Auto-play song when round changes
   useEffect(() => {
@@ -55,7 +56,16 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
     };
   }, [gameSession?.currentRoundIndex]);
 
-  // Timer and progress bar effect
+  // Update progress bar to match elapsed seconds
+  useEffect(() => {
+    if (gameSession) {
+      const durationSeconds = gameSession.settings.songDuration;
+      const progress = Math.min(elapsedSeconds / durationSeconds, 1);
+      progressAnim.setValue(progress);
+    }
+  }, [elapsedSeconds, gameSession]);
+
+  // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -71,13 +81,6 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
           return next;
         });
       }, 100);
-
-      // Animate progress bar
-      Animated.timing(progressAnim, {
-        toValue: 1,
-        duration: durationSeconds * 1000,
-        useNativeDriver: false,
-      }).start();
     } else {
       if (interval) {
         clearInterval(interval);
@@ -310,36 +313,39 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
         end={{ x: 1, y: 1 }}
         style={styles.playbackCard}
       >
-        {/* Round Badge */}
-        <View style={styles.roundBadge}>
-          <Text style={styles.roundBadgeText}>Round {songNumber}/{totalSongs}</Text>
-        </View>
+        {/* Header with Round Badge and Controls */}
+        <View style={styles.cardHeader}>
+          {/* Round Badge */}
+          <View style={styles.roundBadge}>
+            <Text style={styles.roundBadgeText}>Round {songNumber}/{totalSongs}</Text>
+          </View>
 
-        {/* Playback Controls */}
-        <View style={styles.playbackControls}>
-          <TouchableOpacity
-            style={[styles.controlButton, isLoading && styles.controlButtonDisabled]}
-            onPress={handlePlayPause}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#667eea" size="small" />
-            ) : isPlaying ? (
-              <View style={styles.pauseIcon}>
-                <View style={styles.pauseBar} />
-                <View style={styles.pauseBar} />
-              </View>
-            ) : (
-              <View style={styles.playIcon} />
-            )}
-          </TouchableOpacity>
+          {/* Playback Controls */}
+          <View style={styles.playbackControls}>
+            <TouchableOpacity
+              style={[styles.controlButton, isLoading && styles.controlButtonDisabled]}
+              onPress={handlePlayPause}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#667eea" size="small" />
+              ) : isPlaying ? (
+                <View style={styles.pauseIcon}>
+                  <View style={styles.pauseBar} />
+                  <View style={styles.pauseBar} />
+                </View>
+              ) : (
+                <View style={styles.playIcon} />
+              )}
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.controlButton}
-            onPress={handleStop}
-          >
-            <View style={styles.stopIcon} />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleStop}
+            >
+              <View style={styles.stopIcon} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Timer and Progress Bar */}
@@ -376,9 +382,22 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
           <View style={styles.songInfo}>
             <Text style={styles.songTitle}>{currentSong.answer.title}</Text>
             <Text style={styles.songArtist}>{currentSong.answer.artist}</Text>
+            {currentSong.metadata.album && (
+              <Text style={styles.songAlbum}>Album: {currentSong.metadata.album}</Text>
+            )}
+            {currentSong.metadata.duration && (
+              <Text style={styles.songDuration}>
+                Duration: {Math.floor(currentSong.metadata.duration / 60)}:{String(currentSong.metadata.duration % 60).padStart(2, '0')}
+              </Text>
+            )}
             {currentRound?.songStartOffset !== undefined && (
               <Text style={styles.songOffset}>
                 Start: {currentRound.songStartOffset.toFixed(1)}s
+              </Text>
+            )}
+            {currentSong.spotifyUri && (
+              <Text style={styles.songUri} numberOfLines={1}>
+                URI: {currentSong.spotifyUri}
               </Text>
             )}
           </View>
@@ -495,13 +514,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   roundBadge: {
-    alignSelf: 'flex-start',
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    marginBottom: 16,
   },
   roundBadgeText: {
     fontSize: 13,
@@ -513,13 +536,11 @@ const styles = StyleSheet.create({
   playbackControls: {
     flexDirection: 'row',
     gap: 12,
-    justifyContent: 'center',
-    marginBottom: 20,
   },
   controlButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -623,6 +644,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.75)',
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  songAlbum: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginBottom: 4,
+    fontStyle: 'italic',
+  },
+  songDuration: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.75)',
+    marginBottom: 4,
+  },
+  songUri: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontFamily: 'monospace',
+    marginTop: 4,
   },
   section: {
     marginBottom: 16,
