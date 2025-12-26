@@ -166,8 +166,9 @@ class SpotifyPlaybackService {
       );
       console.log('⏸️ Playback paused');
     } catch (error: any) {
-      // 404 is normal - means no active playback
-      if (error.response?.status !== 404) {
+      // 404 and 403 are normal - means no active playback or already paused
+      const status = error.response?.status;
+      if (status !== 404 && status !== 403) {
         console.error('Error pausing playback:', error);
       }
     }
