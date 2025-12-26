@@ -6,6 +6,7 @@
   "workspaces": [
     "packages/backend",
     "packages/participant-web",
+    "packages/quiz-master-web",
     "packages/shared"
   ],
   "scripts": {
@@ -13,7 +14,10 @@
     "dev:backend": "npm run dev --workspace=backend",
     "dev:quiz": "npm run start --workspace=quiz-master",
     "dev:web": "npm run dev --workspace=participant-web",
+    "dev:quiz-web": "npm run dev --workspace=quiz-master-web",
     "build": "npm run build --workspaces",
+    "build:prod": "npm run build --workspace=participant-web && npm run build --workspace=quiz-master-web && npm run build --workspace=backend",
+    "start": "npm run start --workspace=backend",
     "test": "npm run test --workspaces"
   },
   "devDependencies": {

@@ -61,17 +61,29 @@ setSocketIO(io);
 app.use('/api/game', gameRoutes);
 app.use('/api/spotify', spotifyRoutes);
 
-// Serve participant web app static files
+// Static file paths
 const participantWebPath = path.join(__dirname, '../../participant-web/dist');
-app.use(express.static(participantWebPath));
+const quizMasterWebPath = path.join(__dirname, '../../quiz-master-web/dist');
 
-// SPA fallback - serve index.html for any non-API routes
+// Serve static files from both apps (priority order matters)
+// Try participant-web assets first, then quiz-master-web
+app.use(express.static(participantWebPath));
+app.use(express.static(quizMasterWebPath));
+
+// SPA fallback routing
 app.get('*', (req, res, next) => {
   // Skip if it's an API route
   if (req.path.startsWith('/api/')) {
     return next();
   }
-  res.sendFile(path.join(participantWebPath, 'index.html'));
+
+  // Serve participant web for /join routes
+  if (req.path.startsWith('/join')) {
+    return res.sendFile(path.join(participantWebPath, 'index.html'));
+  }
+
+  // Serve quiz master web for all other routes
+  res.sendFile(path.join(quizMasterWebPath, 'index.html'));
 });
 
 // Error handling middleware

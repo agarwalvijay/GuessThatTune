@@ -1,9 +1,9 @@
 export const config = {
-  // Backend API URL
-  backendUrl: import.meta.env.VITE_BACKEND_URL || 'http://192.168.1.134:3000',
+  // Backend API URL - use empty string for same-origin requests in production
+  backendUrl: import.meta.env.VITE_BACKEND_URL || '',
 
-  // Web App URL (for participant joining)
-  webAppUrl: import.meta.env.VITE_WEB_APP_URL || 'http://192.168.1.134:3000',
+  // Web App URL (for participant joining) - use current origin if not specified
+  webAppUrl: import.meta.env.VITE_WEB_APP_URL || window.location.origin,
 
   // Spotify Configuration
   spotify: {
