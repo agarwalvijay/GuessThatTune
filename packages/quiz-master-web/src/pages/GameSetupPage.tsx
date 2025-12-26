@@ -107,17 +107,25 @@ export function GameSetupPage() {
       }
       console.log('🔀 Shuffled', shuffledSongs.length, 'songs for random playback');
 
-      // Create game session
-      const session = await apiService.createGameSession({
-        hostName,
-        playlistId: selectedPlaylist.id,
-        playlistName: selectedPlaylist.name,
-        songs: shuffledSongs,
-        settings: {
-          songDuration,
-          numberOfSongs: Math.min(numberOfSongs, shuffledSongs.length),
-        },
-      });
+      let session;
+      // Check if there's an existing ended session to restart with same players
+      if (gameSession && gameSession.status === 'ended') {
+        console.log('🔄 Restarting game with same participants');
+        session = await apiService.restartGameSession(gameSession.id, shuffledSongs);
+      } else {
+        // Create new game session
+        console.log('🆕 Creating new game session');
+        session = await apiService.createGameSession({
+          hostName,
+          playlistId: selectedPlaylist.id,
+          playlistName: selectedPlaylist.name,
+          songs: shuffledSongs,
+          settings: {
+            songDuration,
+            numberOfSongs: Math.min(numberOfSongs, shuffledSongs.length),
+          },
+        });
+      }
 
       setGameSession(session);
     } catch (err: any) {

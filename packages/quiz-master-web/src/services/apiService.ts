@@ -170,6 +170,34 @@ class ApiService {
   async endGameSession(sessionId: string): Promise<void> {
     await this.api.post(`/api/game/${sessionId}/end`);
   }
+
+  /**
+   * Restart a game session with the same participants
+   */
+  async restartGameSession(sessionId: string, songs: Song[]): Promise<GameSession> {
+    // Transform songs to match backend expected format
+    const transformedSongs = songs.map(song => ({
+      id: song.id,
+      spotifyTrackId: song.id,
+      spotifyUri: song.spotifyUri,
+      metadata: {
+        title: song.title || '',
+        artist: song.artist || '',
+        album: song.album || '',
+        duration: song.durationMs ? Math.floor(song.durationMs / 1000) : 180,
+      },
+      answer: {
+        title: song.title || '',
+        artist: song.artist || '',
+      },
+      previewUrl: song.previewUrl,
+    }));
+
+    const response = await this.api.post(`/api/game/${sessionId}/restart`, {
+      songs: transformedSongs,
+    });
+    return response.data.session;
+  }
 }
 
 export const apiService = new ApiService();
