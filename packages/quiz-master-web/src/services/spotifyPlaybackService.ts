@@ -134,40 +134,6 @@ class SpotifyPlaybackService {
 
       this.selectedDeviceId = targetDevice.id;
       console.log('✅ Playback command sent to', targetDevice.name);
-
-      // Verify playback after a moment and retry if needed
-      setTimeout(async () => {
-        const state = await this.getCurrentState();
-        if (state && state.is_playing) {
-          console.log('✅ Verified: Music is playing');
-          console.log('📊 Current track:', state.item?.name);
-          console.log('📊 Progress:', Math.floor(state.progress_ms / 1000), 'seconds');
-        } else {
-          console.warn('⚠️ Playback command sent but music is not playing');
-          console.warn('🔄 Retrying playback...');
-
-          // Retry the play command
-          try {
-            await axios.put(
-              `https://api.spotify.com/v1/me/player/play?device_id=${targetDevice.id}`,
-              {
-                uris: [trackUri],
-                position_ms: startPositionMs,
-              },
-              {
-                headers: {
-                  'Authorization': `Bearer ${this.accessToken}`,
-                  'Content-Type': 'application/json',
-                },
-              }
-            );
-            console.log('✅ Retry successful');
-          } catch (retryError) {
-            console.error('❌ Retry failed:', retryError);
-            console.warn('💡 Please click play in your Spotify app');
-          }
-        }
-      }, 3000);
     } catch (error: any) {
       console.error('❌ Error playing song:', error);
       if (error.response) {

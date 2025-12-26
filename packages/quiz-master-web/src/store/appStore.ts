@@ -2,12 +2,23 @@ import { create } from 'zustand';
 
 interface Song {
   id: string;
-  title: string;
-  artist: string;
-  album: string;
+  title?: string;
+  artist?: string;
+  album?: string;
   spotifyUri: string;
   previewUrl?: string;
-  durationMs: number;
+  durationMs?: number;
+  // Backend format
+  answer?: {
+    title: string;
+    artist: string;
+  };
+  metadata?: {
+    title: string;
+    artist: string;
+    album?: string;
+    duration?: number;
+  };
 }
 
 interface GameSession {

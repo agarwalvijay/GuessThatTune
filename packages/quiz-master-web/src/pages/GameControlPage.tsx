@@ -165,34 +165,36 @@ export function GameControlPage() {
     });
 
     socketService.onRoundStarted((data) => {
-      console.log('Round started:', data);
+      console.log('🎵 Round started event received:', data);
 
-      // Get the round info from the game session
-      if (gameSession) {
-        const round = gameSession.rounds?.[gameSession.currentRoundIndex];
-        const song = gameSession.songs?.[gameSession.currentRoundIndex];
+      // Wait a moment for GAME_STATE_UPDATE to arrive and update the session
+      setTimeout(() => {
+        const currentSession = useAppStore.getState().gameSession;
 
-        if (round && song) {
-          setCurrentRound({
-            roundIndex: gameSession.currentRoundIndex,
-            song: song,
-          });
+        if (currentSession) {
+          console.log('Current round index after update:', currentSession.currentRoundIndex);
+          const round = currentSession.rounds?.[currentSession.currentRoundIndex];
+          const song = currentSession.songs?.[currentSession.currentRoundIndex];
+
+          if (round && song) {
+            console.log('Setting up round:', currentSession.currentRoundIndex + 1, 'Song:', song.answer?.title || song.title);
+            setCurrentRound({
+              roundIndex: currentSession.currentRoundIndex,
+              song: song,
+            });
+            // Don't call playSong here - the useEffect watching currentRound will do it
+          } else {
+            console.error('Round or song not found for index:', currentSession.currentRoundIndex);
+          }
         }
-      }
+      }, 100); // Small delay to let GAME_STATE_UPDATE arrive first
 
+      // Reset UI state for new round immediately
       setShowAnswer(false);
       setBuzzerEvents([]);
       setElapsedSeconds(0);
       setIsPlaying(true);
       setTimeRemaining(data.duration);
-
-      // Play the song from the current round
-      if (gameSession) {
-        const song = gameSession.songs?.[gameSession.currentRoundIndex];
-        if (song) {
-          playSong(song);
-        }
-      }
     });
 
     socketService.on('buzzer_event', (data: { buzzerEvent: BuzzerEvent; position: number }) => {
@@ -221,7 +223,8 @@ export function GameControlPage() {
     });
 
     socketService.onSessionUpdate((data) => {
-      console.log('Session update:', data);
+      console.log('📡 Session update received. CurrentRoundIndex:', data.session.currentRoundIndex);
+      console.log('Session status:', data.session.status);
       setGameSession(data.session);
     });
   };
@@ -291,16 +294,21 @@ export function GameControlPage() {
     if (!gameSession) return;
 
     try {
+      console.log('⏭️ Moving to next round. Current index:', gameSession.currentRoundIndex);
+
       // Stop current audio
       await spotifyPlaybackService.pause();
       setIsPlaying(false);
 
       const result = await apiService.nextRound(gameSession.id);
+      console.log('Next round result:', result);
 
       if (result.gameComplete) {
+        console.log('Game complete! Navigating to results');
         // Navigate to results
         navigate('/results');
       } else {
+        console.log('Waiting for SONG_STARTED event for next round...');
         // Clear buzzer events for new round
         setBuzzerEvents([]);
         setShowAnswer(false);
@@ -319,7 +327,11 @@ export function GameControlPage() {
     }
 
     try {
+      // Stop playback before ending the game
+      await spotifyPlaybackService.pause();
       await apiService.endGameSession(gameSession.id);
+      // Navigate to results page to show final scores
+      navigate('/results');
     } catch (error) {
       console.error('Error ending game:', error);
     }
@@ -327,15 +339,27 @@ export function GameControlPage() {
 
   // Timer countdown and elapsed time
   useEffect(() => {
-    if (isPlaying && timeRemaining > 0 && gameSession) {
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => Math.max(0, prev - 1));
-        setElapsedSeconds((prev) => prev + 0.1);
-      }, 100);
-
-      return () => clearInterval(timer);
+    if (!isPlaying || !gameSession || timeRemaining <= 0) {
+      return;
     }
-  }, [isPlaying, timeRemaining, gameSession]);
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        const newValue = prev - 0.1;
+        if (newValue <= 0) {
+          // Time's up - stop playing
+          setIsPlaying(false);
+          spotifyPlaybackService.pause();
+          console.log('⏱️ Timer reached 0, stopping playback');
+          return 0;
+        }
+        return newValue;
+      });
+      setElapsedSeconds((prev) => prev + 0.1);
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [isPlaying, gameSession]); // timeRemaining is NOT in dependencies to avoid recreating interval
 
   if (!gameSession || !currentRound) {
     return (
@@ -405,9 +429,17 @@ export function GameControlPage() {
 
           {showAnswer && (
             <div style={styles.songInfo}>
-              <p style={styles.songTitle}>{currentSong.title}</p>
-              <p style={styles.songArtist}>{currentSong.artist}</p>
-              <p style={styles.songAlbum}>Album: {currentSong.album}</p>
+              <p style={styles.songTitle}>
+                {currentSong.answer?.title || currentSong.title || currentSong.metadata?.title}
+              </p>
+              <p style={styles.songArtist}>
+                {currentSong.answer?.artist || currentSong.artist || currentSong.metadata?.artist}
+              </p>
+              {(currentSong.metadata?.album || currentSong.album) && (
+                <p style={styles.songAlbum}>
+                  Album: {currentSong.metadata?.album || currentSong.album}
+                </p>
+              )}
             </div>
           )}
         </div>

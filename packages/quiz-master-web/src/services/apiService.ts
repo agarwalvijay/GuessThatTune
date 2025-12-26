@@ -102,14 +102,14 @@ class ApiService {
       spotifyTrackId: song.id,
       spotifyUri: song.spotifyUri,
       metadata: {
-        title: song.title,
-        artist: song.artist,
-        album: song.album,
-        duration: Math.floor(song.durationMs / 1000), // Convert ms to seconds
+        title: song.title || '',
+        artist: song.artist || '',
+        album: song.album || '',
+        duration: song.durationMs ? Math.floor(song.durationMs / 1000) : 180, // Convert ms to seconds
       },
       answer: {
-        title: song.title,
-        artist: song.artist,
+        title: song.title || '',
+        artist: song.artist || '',
       },
       previewUrl: song.previewUrl,
     }));
