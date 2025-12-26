@@ -16,7 +16,7 @@
     "dev:web": "npm run dev --workspace=participant-web",
     "dev:quiz-web": "npm run dev --workspace=quiz-master-web",
     "build": "npm run build --workspaces",
-    "build:prod": "npm run build --workspace=participant-web && npm run build --workspace=quiz-master-web && npm run build --workspace=backend",
+    "build:prod": "cd packages/participant-web && npm run build && cd ../quiz-master-web && npm run build && cd ../backend && npm run build",
     "start": "npm run start --workspace=backend",
     "test": "npm run test --workspaces"
   },
