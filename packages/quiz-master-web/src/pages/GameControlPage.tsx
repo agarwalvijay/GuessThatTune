@@ -218,8 +218,8 @@ export function GameControlPage() {
 
     socketService.onGameEnded((data) => {
       console.log('Game ended:', data);
-      alert('Game ended! Thanks for playing.');
-      navigate('/playlists');
+      // Navigate to results page to show final scores
+      navigate('/results');
     });
 
     socketService.onSessionUpdate((data) => {

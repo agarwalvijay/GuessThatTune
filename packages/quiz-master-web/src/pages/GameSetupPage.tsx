@@ -99,15 +99,23 @@ export function GameSetupPage() {
         return;
       }
 
+      // Shuffle songs randomly to avoid playing in playlist order
+      const shuffledSongs = [...songs];
+      for (let i = shuffledSongs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledSongs[i], shuffledSongs[j]] = [shuffledSongs[j], shuffledSongs[i]];
+      }
+      console.log('🔀 Shuffled', shuffledSongs.length, 'songs for random playback');
+
       // Create game session
       const session = await apiService.createGameSession({
         hostName,
         playlistId: selectedPlaylist.id,
         playlistName: selectedPlaylist.name,
-        songs,
+        songs: shuffledSongs,
         settings: {
           songDuration,
-          numberOfSongs: Math.min(numberOfSongs, songs.length),
+          numberOfSongs: Math.min(numberOfSongs, shuffledSongs.length),
         },
       });
 

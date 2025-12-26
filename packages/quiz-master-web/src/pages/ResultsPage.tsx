@@ -91,7 +91,7 @@ export function ResultsPage() {
         {/* Game Stats */}
         <div style={styles.statsSection}>
           <div style={styles.statCard}>
-            <p style={styles.statValue}>{gameSession.songs.length}</p>
+            <p style={styles.statValue}>{gameSession.settings.numberOfSongs}</p>
             <p style={styles.statLabel}>Songs Played</p>
           </div>
           <div style={styles.statCard}>
