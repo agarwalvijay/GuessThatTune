@@ -65,10 +65,9 @@ app.use('/api/spotify', spotifyRoutes);
 const participantWebPath = path.join(__dirname, '../../participant-web/dist');
 const quizMasterWebPath = path.join(__dirname, '../../quiz-master-web/dist');
 
-// Serve static files from both apps (priority order matters)
-// Try participant-web assets first, then quiz-master-web
-app.use(express.static(participantWebPath));
+// Serve static files from both apps (quiz-master-web first for root)
 app.use(express.static(quizMasterWebPath));
+app.use(express.static(participantWebPath));
 
 // SPA fallback routing
 app.get('*', (req, res, next) => {
