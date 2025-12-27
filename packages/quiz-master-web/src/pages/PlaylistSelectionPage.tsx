@@ -21,12 +21,17 @@ export function PlaylistSelectionPage() {
   }, [accessToken, navigate]);
 
   const loadPlaylists = async () => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      console.error('❌ No access token available');
+      return;
+    }
 
     try {
+      console.log('📋 Fetching playlists...');
       setLoading(true);
       setError(null);
       const data = await apiService.fetchPlaylists(accessToken);
+      console.log('✅ Playlists loaded:', data.length);
       setPlaylists(data);
     } catch (err: any) {
       console.error('Error loading playlists:', err);

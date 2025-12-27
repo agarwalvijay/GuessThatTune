@@ -16,12 +16,15 @@ export function SpotifyLoginPage() {
 
       // Check if we're returning from Spotify OAuth
       if (window.location.search.includes('code=')) {
+        console.log('🔐 Processing OAuth callback...');
         const token = await spotifyAuthService.handleCallback();
         if (token) {
+          console.log('✅ Token received, navigating to playlists');
           setAccessToken(token);
           navigate('/playlists');
         } else {
-          console.error('Failed to get access token from callback');
+          console.error('❌ Failed to get access token from callback');
+          alert('Failed to authenticate with Spotify. Please try again.');
         }
       } else {
         // Check if already authenticated
