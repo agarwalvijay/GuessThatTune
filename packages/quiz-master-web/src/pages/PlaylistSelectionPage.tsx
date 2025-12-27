@@ -30,7 +30,11 @@ export function PlaylistSelectionPage() {
       setPlaylists(data);
     } catch (err: any) {
       console.error('Error loading playlists:', err);
-      setError('Failed to load playlists. Please try again.');
+      const errorMessage = err.response?.data?.error?.message
+        || err.response?.data?.message
+        || err.message
+        || 'Failed to load playlists. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
