@@ -38,8 +38,9 @@ export function ResultsPage() {
   const winner = finalScores[0];
 
   const handlePlayAgain = () => {
-    // Navigate to game setup - it will detect the ended session and restart it
-    navigate('/game-setup');
+    // Navigate to playlist selection - keep the ended session in store
+    // so GameSetupPage will restart it instead of creating a new one
+    navigate('/playlists');
   };
 
   const handleStartFresh = () => {

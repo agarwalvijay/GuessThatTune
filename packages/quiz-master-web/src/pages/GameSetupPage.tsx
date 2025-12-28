@@ -113,12 +113,21 @@ export function GameSetupPage() {
 
       let session;
       // Check if there's an existing ended session to restart with same players
+      console.log('🎮 Game session check:');
+      console.log('  - gameSession exists?', !!gameSession);
+      console.log('  - gameSession.id:', gameSession?.id);
+      console.log('  - gameSession.status:', gameSession?.status);
+      console.log('  - participants:', gameSession?.participantIds?.length || 0);
+
       if (gameSession && gameSession.status === 'ended') {
         console.log('🔄 Restarting game with same participants');
+        console.log('  - Session ID:', gameSession.id);
+        console.log('  - Participants to keep:', gameSession.participantIds);
         session = await apiService.restartGameSession(gameSession.id, shuffledSongs);
       } else {
         // Create new game session
         console.log('🆕 Creating new game session');
+        console.log('  - Reason:', !gameSession ? 'No existing session' : `Status is '${gameSession.status}' not 'ended'`);
         session = await apiService.createGameSession({
           hostName,
           playlistId: selectedPlaylist.id,
