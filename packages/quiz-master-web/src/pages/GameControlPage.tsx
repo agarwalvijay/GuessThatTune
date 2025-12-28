@@ -387,96 +387,6 @@ export function GameControlPage() {
       <div style={styles.content}>
         <h1 style={styles.appTitle}>Guess That Tune!</h1>
 
-        {/* Playback Card */}
-        <div style={styles.playbackCard}>
-          <div style={styles.cardHeader}>
-            <div style={styles.roundBadge}>
-              Round {songNumber}/{totalSongs}
-            </div>
-            <div style={styles.playbackControls}>
-              <button
-                style={styles.controlButton}
-                onClick={handlePlayPause}
-                disabled={showAnswer}
-              >
-                {isPlaying ? '⏸' : '▶️'}
-              </button>
-              <button
-                style={styles.controlButton}
-                onClick={handleStop}
-              >
-                ⏹
-              </button>
-            </div>
-          </div>
-
-          <div style={styles.timerSection}>
-            <p style={styles.timerText}>
-              {elapsedSeconds.toFixed(1)}s / {duration}s
-            </p>
-            <div style={styles.progressBarContainer}>
-              <div
-                style={{
-                  ...styles.progressBar,
-                  width: `${progress * 100}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <button
-            style={styles.revealButton}
-            onClick={() => setShowAnswer(!showAnswer)}
-          >
-            {showAnswer ? 'HIDE' : 'REVEAL'} SONG
-          </button>
-        </div>
-
-        {/* Song Info Card - Shows when answer is revealed */}
-        {showAnswer && currentSong.metadata && (
-          <div style={styles.songInfoCard}>
-            {currentSong.metadata.imageUrl && (
-              <img
-                src={currentSong.metadata.imageUrl}
-                alt="Album artwork"
-                style={styles.albumArtwork}
-              />
-            )}
-            <div style={styles.songDetails}>
-              <h3 style={styles.songTitle}>
-                {currentSong.answer?.title || currentSong.title || currentSong.metadata.title}
-              </h3>
-              <p style={styles.songArtist}>
-                {currentSong.answer?.artist || currentSong.artist || currentSong.metadata.artist}
-              </p>
-              <p style={styles.songAlbum}>
-                Album: {currentSong.metadata.album}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* QR Code Section */}
-        <div style={styles.section}>
-          <button
-            style={styles.qrToggle}
-            onClick={() => setShowQRCode(!showQRCode)}
-          >
-            {showQRCode ? '▼' : '▶'} Players Can Join Here
-          </button>
-          {showQRCode && (
-            <div style={styles.qrCodeContainer}>
-              <QRCodeSVG
-                value={`${config.webAppUrl}/join/${gameSession.id}`}
-                size={180}
-              />
-              <p style={styles.joinUrl}>
-                {config.webAppUrl}/join/{gameSession.id}
-              </p>
-            </div>
-          )}
-        </div>
-
         {/* Two Column Layout: Buzzer Events & Scores */}
         <div style={styles.twoColumnContainer}>
           {/* Left Column: Who Buzzed In */}
@@ -594,6 +504,96 @@ export function GameControlPage() {
           >
             End Game
           </button>
+        </div>
+
+        {/* Playback Card */}
+        <div style={styles.playbackCard}>
+          <div style={styles.cardHeader}>
+            <div style={styles.roundBadge}>
+              Round {songNumber}/{totalSongs}
+            </div>
+            <div style={styles.playbackControls}>
+              <button
+                style={styles.controlButton}
+                onClick={handlePlayPause}
+                disabled={showAnswer}
+              >
+                {isPlaying ? '⏸' : '▶️'}
+              </button>
+              <button
+                style={styles.controlButton}
+                onClick={handleStop}
+              >
+                ⏹
+              </button>
+            </div>
+          </div>
+
+          <div style={styles.timerSection}>
+            <p style={styles.timerText}>
+              {elapsedSeconds.toFixed(1)}s / {duration}s
+            </p>
+            <div style={styles.progressBarContainer}>
+              <div
+                style={{
+                  ...styles.progressBar,
+                  width: `${progress * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <button
+            style={styles.revealButton}
+            onClick={() => setShowAnswer(!showAnswer)}
+          >
+            {showAnswer ? 'HIDE' : 'REVEAL'} SONG
+          </button>
+        </div>
+
+        {/* Song Info Card - Shows when answer is revealed */}
+        {showAnswer && currentSong.metadata && (
+          <div style={styles.songInfoCard}>
+            {currentSong.metadata.imageUrl && (
+              <img
+                src={currentSong.metadata.imageUrl}
+                alt="Album artwork"
+                style={styles.albumArtwork}
+              />
+            )}
+            <div style={styles.songDetails}>
+              <h3 style={styles.songTitle}>
+                {currentSong.answer?.title || currentSong.title || currentSong.metadata.title}
+              </h3>
+              <p style={styles.songArtist}>
+                {currentSong.answer?.artist || currentSong.artist || currentSong.metadata.artist}
+              </p>
+              <p style={styles.songAlbum}>
+                Album: {currentSong.metadata.album}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* QR Code Section */}
+        <div style={styles.section}>
+          <button
+            style={styles.qrToggle}
+            onClick={() => setShowQRCode(!showQRCode)}
+          >
+            {showQRCode ? '▼' : '▶'} Players Can Join Here
+          </button>
+          {showQRCode && (
+            <div style={styles.qrCodeContainer}>
+              <QRCodeSVG
+                value={`${config.webAppUrl}/join/${gameSession.id}`}
+                size={180}
+              />
+              <p style={styles.joinUrl}>
+                {config.webAppUrl}/join/{gameSession.id}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -871,9 +871,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   controls: {
     display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '10px',
-    marginTop: '16px',
+    flexDirection: 'row' as const,
+    gap: '12px',
+    marginBottom: '20px',
   },
   nextButton: {
     padding: '16px',
