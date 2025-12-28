@@ -45,8 +45,18 @@ class SocketService {
 
     // Listen for game events
     this.socket.on(SERVER_EVENTS.GAME_STATE_UPDATE, ({ session }) => {
-      console.log('📡 Game state update:', session.status);
+      console.log('📡 GAME_STATE_UPDATE received!');
+      console.log('  - Session ID:', session.id);
+      console.log('  - Status:', session.status);
+      console.log('  - Current round:', session.currentRoundIndex);
+      console.log('  - Participants:', session.participantIds?.length || 0);
+
       const store = useParticipantStore.getState();
+      const currentStatus = store.gameSession?.status;
+
+      console.log('  - Previous status:', currentStatus);
+      console.log('  - Status changed:', currentStatus !== session.status);
+
       store.setGameSession(session);
 
       // Update my score if available

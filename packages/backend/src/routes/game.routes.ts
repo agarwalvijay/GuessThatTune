@@ -254,6 +254,14 @@ router.post('/:sessionId/end', (req: Request, res: Response) => {
   // Broadcast game ended to all participants
   if (io && session) {
     console.log('🏁 Broadcasting game end to session:', sessionId);
+    console.log('  - New status:', session.status);
+    console.log('  - Participants:', session.participantIds.length);
+
+    // Check how many sockets are in the room
+    const room = io.sockets.adapter.rooms.get(sessionId);
+    const socketsInRoom = room ? room.size : 0;
+    console.log('  - Sockets in room:', socketsInRoom);
+
     io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
     io.to(sessionId).emit(SERVER_EVENTS.GAME_ENDED, {
       finalScores: finalScores.map(fs => ({
@@ -293,6 +301,14 @@ router.post('/:sessionId/restart', (req: Request, res: Response) => {
   // Broadcast game restart to all participants
   if (io) {
     console.log('🔄 Broadcasting game restart to session:', sessionId);
+    console.log('  - New status:', session.status);
+    console.log('  - Participants:', session.participantIds.length);
+
+    // Check how many sockets are in the room
+    const room = io.sockets.adapter.rooms.get(sessionId);
+    const socketsInRoom = room ? room.size : 0;
+    console.log('  - Sockets in room:', socketsInRoom);
+
     io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
   }
 

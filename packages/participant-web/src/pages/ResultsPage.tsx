@@ -10,17 +10,22 @@ export function ResultsPage() {
   const gameSession = useParticipantStore((state) => state.gameSession);
   const myScore = useParticipantStore((state) => state.myScore);
   const reset = useParticipantStore((state) => state.reset);
+  const isConnected = useParticipantStore((state) => state.isConnected);
 
   // Keep screen awake during results and waiting for next game
   useWakeLock(true);
 
   // Listen for game restart - when status changes from 'ended' to 'waiting'
   useEffect(() => {
+    console.log('📊 ResultsPage - Current game status:', gameSession?.status);
+    console.log('📊 ResultsPage - Game session ID:', gameSession?.id);
+    console.log('📊 ResultsPage - Participant ID:', participantId);
+
     if (gameSession?.status === 'waiting') {
       console.log('🔄 Game restarted! Returning to waiting room...');
       navigate('/waiting');
     }
-  }, [gameSession?.status, navigate]);
+  }, [gameSession?.status, navigate, gameSession?.id, participantId]);
 
   // Get final scores sorted by score descending
   const finalScores = gameSession?.participants
@@ -85,8 +90,14 @@ export function ResultsPage() {
 
         <div className="results-actions">
           <div className="waiting-message">
+            <p className="connection-status">
+              {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+            </p>
             <p className="waiting-text">🎮 Waiting for next game to start...</p>
             <p className="waiting-hint">Stay on this screen. You'll automatically join when the quiz master starts a new game!</p>
+            <p className="debug-info" style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+              Session: {gameSession?.id?.substring(0, 8)}... | Status: {gameSession?.status}
+            </p>
           </div>
 
           <button className="leave-button" onClick={handlePlayAgain}>
