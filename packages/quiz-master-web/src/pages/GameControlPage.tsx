@@ -6,6 +6,7 @@ import { apiService } from '../services/apiService';
 import { socketService } from '../services/socketService';
 import { spotifyPlaybackService } from '../services/spotifyPlaybackService';
 import { config } from '../config/environment';
+import { useWakeLock } from '../hooks/useWakeLock';
 import type { Song } from '../store/appStore';
 
 interface RoundData {
@@ -34,6 +35,9 @@ export function GameControlPage() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAwarding, setIsAwarding] = useState(false);
+
+  // Keep screen awake during gameplay
+  useWakeLock(true);
 
   useEffect(() => {
     console.log('GameControlPage mounted', { accessToken: !!accessToken, gameSession });

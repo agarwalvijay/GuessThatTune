@@ -5,6 +5,7 @@ import { useAppStore } from '../store/appStore';
 import { apiService } from '../services/apiService';
 import { socketService } from '../services/socketService';
 import { config } from '../config/environment';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 export function GameSetupPage() {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ export function GameSetupPage() {
   const [numberOfSongs] = useState(10);
   const [songDuration] = useState(30);
   const [participants, setParticipants] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Keep screen awake during game setup
+  useWakeLock(true);
 
   useEffect(() => {
     if (!accessToken || !selectedPlaylist) {

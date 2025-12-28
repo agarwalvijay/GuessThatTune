@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParticipantStore } from '../store/participantStore';
+import { useWakeLock } from '../hooks/useWakeLock';
 import './WaitingRoom.css';
 
 export function WaitingRoom() {
@@ -9,6 +10,9 @@ export function WaitingRoom() {
   const sessionId = useParticipantStore((state) => state.sessionId);
   const gameSession = useParticipantStore((state) => state.gameSession);
   const isConnected = useParticipantStore((state) => state.isConnected);
+
+  // Keep screen awake while waiting for game to start
+  useWakeLock(true);
 
   useEffect(() => {
     if (!participantName || !sessionId) {

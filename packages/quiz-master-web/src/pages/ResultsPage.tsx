@@ -1,10 +1,14 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 export function ResultsPage() {
   const navigate = useNavigate();
   const { gameSession } = useAppStore();
+
+  // Keep screen awake during results
+  useWakeLock(true);
 
   useEffect(() => {
     if (!gameSession) {

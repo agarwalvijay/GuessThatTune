@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParticipantStore } from '../store/participantStore';
+import { useWakeLock } from '../hooks/useWakeLock';
 import './ResultsPage.css';
 
 export function ResultsPage() {
@@ -9,6 +10,9 @@ export function ResultsPage() {
   const gameSession = useParticipantStore((state) => state.gameSession);
   const myScore = useParticipantStore((state) => state.myScore);
   const reset = useParticipantStore((state) => state.reset);
+
+  // Keep screen awake during results and waiting for next game
+  useWakeLock(true);
 
   // Listen for game restart - when status changes from 'ended' to 'waiting'
   useEffect(() => {

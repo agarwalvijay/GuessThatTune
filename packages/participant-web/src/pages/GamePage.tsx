@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParticipantStore } from '../store/participantStore';
 import { socketService } from '../services/socketService';
+import { useWakeLock } from '../hooks/useWakeLock';
 import './GamePage.css';
 
 export function GamePage() {
@@ -13,6 +14,9 @@ export function GamePage() {
   const buzzerDisabled = useParticipantStore((state) => state.buzzerDisabled);
   const myScore = useParticipantStore((state) => state.myScore);
   const participantId = useParticipantStore((state) => state.participantId);
+
+  // Keep screen awake during active gameplay
+  useWakeLock(true);
 
   // Derive current round from game session
   const currentRound = gameSession?.rounds?.[gameSession.currentRoundIndex];
