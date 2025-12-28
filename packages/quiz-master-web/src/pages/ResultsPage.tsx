@@ -38,10 +38,12 @@ export function ResultsPage() {
   const winner = finalScores[0];
 
   const handlePlayAgain = () => {
-    navigate('/playlists');
+    // Navigate to game setup - it will detect the ended session and restart it
+    navigate('/game-setup');
   };
 
   const handleStartFresh = () => {
+    // Reset everything and start a completely new session
     useAppStore.getState().reset();
     navigate('/');
   };
