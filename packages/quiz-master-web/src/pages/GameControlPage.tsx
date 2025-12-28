@@ -503,44 +503,79 @@ export function GameControlPage() {
           )}
         </div>
 
-        {/* Participants */}
+        {/* Players & Scores */}
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>
-            Participants ({gameSession.participants?.length || 0})
+            Players & Scores ({gameSession.participants?.length || 0})
           </h2>
-          <div style={styles.participantsList}>
+          <div style={styles.playersScoresContainer}>
+            {/* Header Row */}
+            <div style={styles.playersScoresHeader}>
+              <div style={styles.playerColumnHeader}>Player</div>
+              <div style={styles.scoreColumnHeader}>Score</div>
+            </div>
+
+            {/* Player Rows */}
             {gameSession.participants && gameSession.participants.length > 0 ? (
-              gameSession.participants.map((participant) => (
-                <div key={participant.id} style={styles.participantCard}>
-                  <span style={styles.participantIcon}>👤</span>
-                  <span style={styles.participantName}>{participant.name}</span>
-                </div>
-              ))
+              (() => {
+                // Create a map of buzzer events for quick lookup
+                const buzzerMap = new Map(
+                  buzzerEvents.map((event) => [
+                    event.participantId,
+                    { time: event.elapsedSeconds, position: event.position },
+                  ])
+                );
+
+                // Sort participants: buzzed players first (by buzz time), then others (by score)
+                const sortedParticipants = [...gameSession.participants].sort((a, b) => {
+                  const aBuzzed = buzzerMap.has(a.id);
+                  const bBuzzed = buzzerMap.has(b.id);
+
+                  if (aBuzzed && !bBuzzed) return -1;
+                  if (!aBuzzed && bBuzzed) return 1;
+
+                  if (aBuzzed && bBuzzed) {
+                    // Both buzzed - sort by position (earlier buzz first)
+                    return buzzerMap.get(a.id)!.position - buzzerMap.get(b.id)!.position;
+                  }
+
+                  // Neither buzzed - sort by score (highest first)
+                  const aScore = scores[a.id] || 0;
+                  const bScore = scores[b.id] || 0;
+                  return bScore - aScore;
+                });
+
+                return sortedParticipants.map((participant) => {
+                  const score = scores[participant.id] || 0;
+                  const buzzerData = buzzerMap.get(participant.id);
+                  const hasBuzzed = buzzerData != null;
+
+                  return (
+                    <div
+                      key={participant.id}
+                      style={{
+                        ...styles.playerScoreRow,
+                        ...(hasBuzzed ? styles.playerScoreRowBuzzed : {}),
+                      }}
+                    >
+                      <div style={styles.playerColumn}>
+                        <span style={styles.playerName}>{participant.name}</span>
+                        {hasBuzzed && (
+                          <span style={styles.buzzTime}>
+                            🔔 {buzzerData.time.toFixed(2)}s
+                          </span>
+                        )}
+                      </div>
+                      <div style={styles.scoreColumn}>{score} pts</div>
+                    </div>
+                  );
+                });
+              })()
             ) : (
               <div style={styles.emptyState}>
                 <p style={styles.emptyText}>No participants yet</p>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Scores */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Scores</h2>
-          <div style={styles.scoresList}>
-            {Object.entries(scores)
-              .sort(([, a], [, b]) => b - a)
-              .map(([participantId, score]) => {
-                const participant = gameSession.participants?.find(
-                  (p) => p.id === participantId
-                );
-                return (
-                  <div key={participantId} style={styles.scoreCard}>
-                    <p style={styles.scoreName}>{participant?.name || 'Unknown'}</p>
-                    <p style={styles.scorePoints}>{score} pts</p>
-                  </div>
-                );
-              })}
           </div>
         </div>
 
@@ -790,51 +825,67 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: '600',
     color: '#10b981',
   },
-  participantsList: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-    gap: '10px',
-  },
-  participantCard: {
-    backgroundColor: 'white',
-    borderRadius: '10px',
-    padding: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    border: '1px solid #f0f0f0',
-  },
-  participantIcon: {
-    fontSize: '18px',
-  },
-  participantName: {
-    fontSize: '14px',
-    color: '#1a1a1a',
-    fontWeight: '500',
-  },
-  scoresList: {
+  playersScoresContainer: {
     backgroundColor: 'white',
     borderRadius: '12px',
     overflow: 'hidden' as const,
     border: '1px solid #f0f0f0',
   },
-  scoreCard: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '14px',
-    borderBottom: '1px solid #f5f5f5',
+  playersScoresHeader: {
+    display: 'grid',
+    gridTemplateColumns: '1fr auto',
+    padding: '12px 16px',
+    backgroundColor: '#f8f9fa',
+    borderBottom: '2px solid #e8e8e8',
   },
-  scoreName: {
+  playerColumnHeader: {
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#666',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+  },
+  scoreColumnHeader: {
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#666',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+    textAlign: 'right' as const,
+    minWidth: '80px',
+  },
+  playerScoreRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr auto',
+    padding: '14px 16px',
+    borderBottom: '1px solid #f5f5f5',
+    transition: 'background-color 0.2s',
+  },
+  playerScoreRowBuzzed: {
+    backgroundColor: '#fff9e6',
+    borderLeft: '4px solid #ffd700',
+  },
+  playerColumn: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '4px',
+  },
+  playerName: {
     fontSize: '15px',
     color: '#1a1a1a',
-    fontWeight: '500',
-    margin: 0,
+    fontWeight: '600',
   },
-  scorePoints: {
-    fontSize: '15px',
+  buzzTime: {
+    fontSize: '13px',
+    color: '#f59e0b',
+    fontWeight: '600',
+  },
+  scoreColumn: {
+    fontSize: '16px',
     fontWeight: '700',
     color: '#667eea',
-    margin: 0,
+    textAlign: 'right' as const,
+    minWidth: '80px',
   },
   controls: {
     display: 'flex',
