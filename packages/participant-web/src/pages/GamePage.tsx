@@ -51,6 +51,10 @@ export function GamePage() {
   const roundWinner = currentRound?.winnerId;
   const isWinner = roundWinner && roundWinner === participantId;
 
+  // Get current song metadata
+  const currentSong = gameSession?.songs?.[gameSession.currentRoundIndex];
+  const songMetadata = currentSong?.metadata;
+
   return (
     <div className="game-page">
       <div className="game-container">
@@ -66,6 +70,24 @@ export function GamePage() {
             </p>
           </div>
         </div>
+
+        {/* Song Info Card - Shows after round complete */}
+        {currentRound?.isComplete && songMetadata && (
+          <div className="song-info-card">
+            {songMetadata.imageUrl && (
+              <img
+                src={songMetadata.imageUrl}
+                alt="Album artwork"
+                className="album-artwork"
+              />
+            )}
+            <div className="song-details">
+              <h3 className="song-title">{songMetadata.title}</h3>
+              <p className="song-artist">{songMetadata.artist}</p>
+              <p className="song-album">{songMetadata.album}</p>
+            </div>
+          </div>
+        )}
 
         {/* Buzzer */}
         <div className="buzzer-container">
