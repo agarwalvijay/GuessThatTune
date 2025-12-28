@@ -58,7 +58,8 @@ export function JoinPage() {
   return (
     <div className="join-page">
       <div className="join-container">
-        <h1 className="join-title">🎵 Song Quiz Game</h1>
+        <img src="/logo.png" alt="Guess That Tune!" className="app-logo" />
+        <h1 className="join-title">Guess That Tune!</h1>
         <p className="join-subtitle">Join the fun!</p>
 
         {sessionId && (

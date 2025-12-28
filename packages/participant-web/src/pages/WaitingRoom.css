@@ -24,9 +24,11 @@
   text-align: center;
 }
 
-.waiting-title {
-  font-size: clamp(2.5rem, 12vw, 4rem);
-  margin-bottom: 10px;
+.app-logo {
+  width: clamp(120px, 35vw, 180px);
+  height: auto;
+  margin: 0 auto 20px;
+  display: block;
 }
 
 .waiting-subtitle {

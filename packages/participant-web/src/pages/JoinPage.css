@@ -24,6 +24,13 @@
   text-align: center;
 }
 
+.app-logo {
+  width: clamp(100px, 30vw, 150px);
+  height: auto;
+  margin: 0 auto 20px;
+  display: block;
+}
+
 .join-title {
   font-size: clamp(1.8rem, 7vw, 2.5rem);
   color: #333;
