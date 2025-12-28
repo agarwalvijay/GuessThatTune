@@ -43,11 +43,6 @@ export function WaitingRoom() {
           </p>
         </div>
 
-        <div className="session-info-box">
-          <p className="session-label">Session ID</p>
-          <p className="session-id">{sessionId?.substring(0, 8)}...</p>
-        </div>
-
         <div className="participants-count">
           <p className="count-number">{participantCount}</p>
           <p className="count-label">
@@ -64,6 +59,11 @@ export function WaitingRoom() {
         <p className="waiting-message">
           Get ready! The quiz master will start the game soon...
         </p>
+
+        <div className="session-info-box">
+          <p className="session-label">Session</p>
+          <p className="session-id">{sessionId?.substring(0, 8)}</p>
+        </div>
       </div>
     </div>
   );

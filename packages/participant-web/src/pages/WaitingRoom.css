@@ -54,25 +54,30 @@
 }
 
 .session-info-box {
-  background: #f0f0f0;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 30px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 20px;
+  display: inline-block;
 }
 
 .session-label {
-  font-size: 0.9rem;
+  font-size: 0.65rem;
   color: #999;
-  margin-bottom: 5px;
+  margin: 0;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  display: inline;
 }
 
 .session-id {
-  font-size: 1.2rem;
-  color: #333;
+  font-size: 0.75rem;
+  color: #666;
   font-family: monospace;
   font-weight: 600;
+  margin: 0;
+  display: inline;
+  margin-left: 4px;
 }
 
 .participants-count {
