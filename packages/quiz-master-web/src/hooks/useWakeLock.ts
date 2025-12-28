@@ -25,6 +25,12 @@ export function useWakeLock(enabled: boolean = true) {
 
     const requestWakeLock = async () => {
       try {
+        // Only request if document is visible
+        if (document.visibilityState !== 'visible') {
+          console.log('⏸️ Page not visible, skipping wake lock request');
+          return;
+        }
+
         wakeLockRef.current = await navigator.wakeLock.request('screen');
         console.log('🔆 Screen wake lock activated');
 
@@ -32,7 +38,12 @@ export function useWakeLock(enabled: boolean = true) {
           console.log('🔅 Screen wake lock released');
         });
       } catch (err: any) {
-        console.error('Failed to acquire wake lock:', err);
+        // Only log if it's not a visibility error
+        if (err.name !== 'NotAllowedError') {
+          console.error('Failed to acquire wake lock:', err);
+        } else {
+          console.log('⏸️ Wake lock not allowed (page may not be visible)');
+        }
       }
     };
 
