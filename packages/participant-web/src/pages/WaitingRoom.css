@@ -4,13 +4,20 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  padding: 15px;
+  overflow-x: hidden;
+}
+
+@media (max-width: 480px) {
+  .waiting-room {
+    padding: 10px;
+  }
 }
 
 .waiting-container {
   background: white;
   border-radius: 20px;
-  padding: 40px;
+  padding: clamp(25px, 6vw, 40px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-width: 500px;
   width: 100%;
@@ -18,14 +25,14 @@
 }
 
 .waiting-title {
-  font-size: 4rem;
+  font-size: clamp(2.5rem, 12vw, 4rem);
   margin-bottom: 10px;
 }
 
 .waiting-subtitle {
-  font-size: 1.5rem;
+  font-size: clamp(1.2rem, 5vw, 1.5rem);
   color: #333;
-  margin-bottom: 30px;
+  margin-bottom: clamp(20px, 5vw, 30px);
   font-weight: 700;
 }
 
@@ -71,14 +78,14 @@
 }
 
 .count-number {
-  font-size: 3rem;
+  font-size: clamp(2rem, 10vw, 3rem);
   font-weight: 800;
   color: #667eea;
   margin-bottom: 5px;
 }
 
 .count-label {
-  font-size: 1.1rem;
+  font-size: clamp(1rem, 4vw, 1.1rem);
   color: #666;
 }
 

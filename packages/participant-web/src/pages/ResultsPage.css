@@ -4,7 +4,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 15px;
+  overflow-x: hidden;
+}
+
+@media (max-width: 480px) {
+  .results-page {
+    padding: 10px;
+  }
 }
 
 .results-container {
@@ -19,7 +26,7 @@
 }
 
 .results-title {
-  font-size: 2.5rem;
+  font-size: clamp(1.8rem, 7vw, 2.5rem);
   font-weight: 800;
   color: white;
   margin: 0;
@@ -27,7 +34,7 @@
 }
 
 .winner-crown {
-  font-size: 4rem;
+  font-size: clamp(2.5rem, 10vw, 4rem);
   margin-top: 10px;
   animation: bounce 1s infinite;
 }
@@ -44,9 +51,9 @@
 .my-result {
   background: white;
   border-radius: 20px;
-  padding: 30px;
+  padding: clamp(20px, 5vw, 30px);
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: clamp(20px, 5vw, 30px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
@@ -60,7 +67,7 @@
 }
 
 .result-score {
-  font-size: 3rem;
+  font-size: clamp(2rem, 10vw, 3rem);
   font-weight: 800;
   color: #667eea;
   margin: 0;
@@ -68,7 +75,7 @@
 }
 
 .result-rank {
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 4vw, 1.2rem);
   font-weight: 600;
   color: #333;
   margin: 15px 0 0 0;
@@ -150,7 +157,7 @@
 }
 
 .waiting-text {
-  font-size: 1.3rem;
+  font-size: clamp(1.1rem, 4.5vw, 1.3rem);
   font-weight: 700;
   color: white;
   margin: 0 0 12px 0;
@@ -158,7 +165,7 @@
 }
 
 .waiting-hint {
-  font-size: 0.95rem;
+  font-size: clamp(0.85rem, 3.5vw, 0.95rem);
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
   line-height: 1.5;

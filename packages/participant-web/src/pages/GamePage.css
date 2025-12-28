@@ -3,7 +3,14 @@
   display: flex;
   flex-direction: column;
   background: linear-gradient(135deg, #1DB954 0%, #1ed760 100%);
-  padding: 20px;
+  padding: 15px;
+  overflow-x: hidden;
+}
+
+@media (max-width: 480px) {
+  .game-page {
+    padding: 10px;
+  }
 }
 
 .game-container {
@@ -18,12 +25,19 @@
 .game-header {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 15px;
+  margin-bottom: 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 480px) {
+  .game-header {
+    padding: 12px;
+    border-radius: 12px;
+  }
 }
 
 .player-info {
@@ -31,14 +45,14 @@
 }
 
 .player-name {
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 4vw, 1.2rem);
   font-weight: 700;
   color: #333;
   margin-bottom: 5px;
 }
 
 .player-score {
-  font-size: 1.5rem;
+  font-size: clamp(1.2rem, 5vw, 1.5rem);
   font-weight: 800;
   color: #1DB954;
 }
@@ -48,7 +62,7 @@
 }
 
 .round-number {
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 3.5vw, 1.1rem);
   font-weight: 600;
   color: #666;
 }
@@ -63,11 +77,11 @@
 }
 
 .buzzer {
-  width: 280px;
-  height: 280px;
+  width: min(280px, 80vw);
+  height: min(280px, 80vw);
   border-radius: 50%;
   border: none;
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
   font-weight: 800;
   color: white;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -76,6 +90,13 @@
   transition: all 0.3s;
   position: relative;
   overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .buzzer {
+    width: min(240px, 75vw);
+    height: min(240px, 75vw);
+  }
 }
 
 .buzzer::before {
