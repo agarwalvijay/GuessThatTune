@@ -273,6 +273,36 @@ router.post('/:sessionId/end', (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/game/:sessionId/restart
+ * Restart game with same session ID and participants
+ */
+router.post('/:sessionId/restart', (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const { songs } = req.body;
+
+  if (!songs || songs.length === 0) {
+    return res.status(400).json({ error: 'Songs are required' });
+  }
+
+  const session = gameSessionService.restartGame(sessionId, songs);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  // Broadcast game restart to all participants
+  if (io) {
+    console.log('🔄 Broadcasting game restart to session:', sessionId);
+    io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
+  }
+
+  return res.json({
+    success: true,
+    session,
+  });
+});
+
+/**
  * DELETE /api/game/:sessionId
  * End and delete a game session
  */

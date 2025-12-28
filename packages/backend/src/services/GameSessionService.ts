@@ -379,6 +379,33 @@ export class GameSessionService {
     }
     return session.rounds[session.currentRoundIndex];
   }
+
+  /**
+   * Restart game with same session ID and participants
+   */
+  restartGame(sessionId: string, songs: Song[]): GameSession | null {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return null;
+    }
+
+    // Keep participants but reset their scores
+    const resetScores: { [participantId: string]: number } = {};
+    session.participantIds.forEach(participantId => {
+      resetScores[participantId] = 0;
+    });
+
+    // Reset game state while keeping session ID and participants
+    session.status = 'waiting';
+    session.songs = songs;
+    session.currentRoundIndex = -1;
+    session.rounds = [];
+    session.scores = resetScores;
+    session.createdAt = new Date().toISOString();
+    delete session.endedAt;
+
+    return session;
+  }
 }
 
 // Singleton instance

@@ -54,18 +54,26 @@ export const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ onGameStarted 
 
       const selectedSongs = songs.slice(0, numSongs);
 
-      // Create game session
-      console.log('Creating game session with', selectedSongs.length, 'songs');
-      const response = await apiService.createGameSession(
-        selectedSongs,
-        accessToken,
-        selectedPlaylist?.id
-      );
+      // Check if we're restarting an existing session
+      if (gameSession && gameSession.status === 'ended') {
+        console.log('🔄 Restarting existing session with new songs:', gameSession.id);
+        const response = await apiService.restartGame(gameSession.id, selectedSongs);
+        setGameSession(response.session);
+        console.log('✅ Session restarted with', selectedSongs.length, 'songs');
+      } else {
+        // Create new game session
+        console.log('Creating game session with', selectedSongs.length, 'songs');
+        const response = await apiService.createGameSession(
+          selectedSongs,
+          accessToken,
+          selectedPlaylist?.id
+        );
 
-      console.log('Game session created:', response.session.id);
-      console.log('Join URL:', response.joinUrl);
-      setGameSession(response.session);
-      setJoinUrl(response.joinUrl);
+        console.log('Game session created:', response.session.id);
+        console.log('Join URL:', response.joinUrl);
+        setGameSession(response.session);
+        setJoinUrl(response.joinUrl);
+      }
     } catch (error) {
       console.error('Error creating game:', error);
       if ((error as any).response) {
@@ -93,7 +101,21 @@ export const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ onGameStarted 
   };
 
   const getJoinUrl = () => {
-    return joinUrl || '';
+    // If we have a joinUrl from creating the session, use it
+    if (joinUrl) {
+      console.log('🔗 Using stored joinUrl:', joinUrl);
+      return joinUrl;
+    }
+
+    // Otherwise, construct it from the session ID (for when we navigate back after restart)
+    if (gameSession?.id) {
+      const url = `${config.webAppUrl}/join/${gameSession.id}`;
+      console.log('🔗 Constructing URL from config.webAppUrl:', config.webAppUrl);
+      console.log('🔗 Final URL:', url);
+      return url;
+    }
+
+    return '';
   };
 
   // Connect to socket on mount
@@ -141,8 +163,18 @@ export const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ onGameStarted 
         <Text style={styles.subtitle}>{selectedPlaylist.name}</Text>
       </View>
 
-      {!gameSession ? (
+      {!gameSession || gameSession.status === 'ended' ? (
         <>
+          {/* Show participant count if restarting */}
+          {gameSession && gameSession.status === 'ended' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Continuing with Same Players</Text>
+              <Text style={styles.participantCount}>
+                {gameSession.participantIds?.length || 0} participant(s) will rejoin
+              </Text>
+            </View>
+          )}
+
           {/* Game Settings */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Game Settings</Text>
@@ -174,7 +206,7 @@ export const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ onGameStarted 
             </View>
           </View>
 
-          {/* Create Game Button */}
+          {/* Create/Restart Game Button */}
           <TouchableOpacity
             style={[styles.button, styles.createButton, isCreating && styles.buttonDisabled]}
             onPress={handleCreateGame}
@@ -183,7 +215,9 @@ export const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ onGameStarted 
             {isCreating ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Create Game Session</Text>
+              <Text style={styles.buttonText}>
+                {gameSession?.status === 'ended' ? 'Restart Game with New Songs' : 'Create Game Session'}
+              </Text>
             )}
           </TouchableOpacity>
         </>
@@ -219,12 +253,12 @@ export const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ onGameStarted 
             <Text style={styles.buttonText}>Start Game</Text>
           </TouchableOpacity>
 
-          {/* Cancel Button */}
+          {/* Start New Session Button */}
           <TouchableOpacity
             style={[styles.button, styles.cancelButton]}
             onPress={() => setGameSession(null)}
           >
-            <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel & Create New</Text>
+            <Text style={[styles.buttonText, styles.cancelButtonText]}>Start New Session (New QR Code)</Text>
           </TouchableOpacity>
         </>
       )}

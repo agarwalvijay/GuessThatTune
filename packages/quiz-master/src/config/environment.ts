@@ -1,7 +1,10 @@
 // Environment configuration
 export const config = {
   // Backend API URL
-  backendUrl: 'http://192.168.5.126:3000',
+  backendUrl: 'http://192.168.1.134:3000',
+
+  // Web App URL (for participant joining) - same as backend since they're combined
+  webAppUrl: 'http://192.168.1.134:3000',
 
   // Spotify Configuration
   // You'll need to create a Spotify Developer App and add these credentials
@@ -19,5 +22,8 @@ export const config = {
     ],
   },
 };
+
+console.log('🔧 CONFIG LOADED - webAppUrl:', config.webAppUrl);
+console.log('🔧 CONFIG LOADED - backendUrl:', config.backendUrl);
 
 export default config;

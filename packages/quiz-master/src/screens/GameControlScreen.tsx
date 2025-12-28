@@ -11,12 +11,14 @@ import {
   Animated,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import QRCode from 'react-native-qrcode-svg';
 import KeepAwake from 'react-native-keep-awake';
 import { useAppStore } from '../store/appStore';
 import { socketService } from '../services/socketService';
 import { apiService } from '../services/ApiService';
 import { spotifyPlaybackService } from '../services/SpotifyPlaybackService';
 import type { BuzzerEvent, GameSession } from '@song-quiz/shared';
+import config from '../config/environment';
 
 interface GameControlScreenProps {
   onGameEnded: () => void;
@@ -33,6 +35,7 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
   const [isLoading, setIsLoading] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [showQRCode, setShowQRCode] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -404,6 +407,31 @@ export const GameControlScreen: React.FC<GameControlScreenProps> = ({ onGameEnde
         )}
       </LinearGradient>
 
+      {/* QR Code Section - Join Mid-Game */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.qrToggle}
+          onPress={() => setShowQRCode(!showQRCode)}
+        >
+          <Text style={styles.qrToggleText}>
+            {showQRCode ? '▼' : '▶'} Players Can Join Here
+          </Text>
+        </TouchableOpacity>
+
+        {showQRCode && (
+          <View style={styles.qrCodeContainer}>
+            <QRCode
+              value={`${config.webAppUrl}/join/${gameSession.id}`}
+              size={180}
+              backgroundColor="white"
+              color="#667eea"
+            />
+            <Text style={styles.joinUrl}>{`${config.webAppUrl}/join/${gameSession.id}`}</Text>
+            <Text style={styles.qrHint}>Scan to join this game</Text>
+          </View>
+        )}
+      </View>
+
       {/* Buzzer Events */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Who Buzzed In</Text>
@@ -673,6 +701,40 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  qrToggle: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  qrToggleText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#667eea',
+  },
+  qrCodeContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  joinUrl: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 12,
+    fontFamily: 'monospace',
+    textAlign: 'center',
+  },
+  qrHint: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
   },
   emptyState: {
     backgroundColor: '#fff',

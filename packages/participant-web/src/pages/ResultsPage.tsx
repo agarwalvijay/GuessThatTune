@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParticipantStore } from '../store/participantStore';
 import './ResultsPage.css';
@@ -8,6 +9,14 @@ export function ResultsPage() {
   const gameSession = useParticipantStore((state) => state.gameSession);
   const myScore = useParticipantStore((state) => state.myScore);
   const reset = useParticipantStore((state) => state.reset);
+
+  // Listen for game restart - when status changes from 'ended' to 'waiting'
+  useEffect(() => {
+    if (gameSession?.status === 'waiting') {
+      console.log('🔄 Game restarted! Returning to waiting room...');
+      navigate('/waiting');
+    }
+  }, [gameSession?.status, navigate]);
 
   // Get final scores sorted by score descending
   const finalScores = gameSession?.participants
@@ -70,9 +79,16 @@ export function ResultsPage() {
           </div>
         </div>
 
-        <button className="play-again-button" onClick={handlePlayAgain}>
-          Join Another Game
-        </button>
+        <div className="results-actions">
+          <div className="waiting-message">
+            <p className="waiting-text">🎮 Waiting for next game to start...</p>
+            <p className="waiting-hint">Stay on this screen. You'll automatically join when the quiz master starts a new game!</p>
+          </div>
+
+          <button className="leave-button" onClick={handlePlayAgain}>
+            Leave & Join Different Game
+          </button>
+        </div>
       </div>
     </div>
   );

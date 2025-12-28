@@ -131,6 +131,16 @@ class ApiService {
     const response = await this.client.post(`/api/game/${sessionId}/end`);
     return response.data;
   }
+
+  /**
+   * Restart the game with the same session ID
+   */
+  async restartGame(sessionId: string, songs: Song[]) {
+    const response = await this.client.post(`/api/game/${sessionId}/restart`, {
+      songs,
+    });
+    return response.data;
+  }
 }
 
 export const apiService = new ApiService();

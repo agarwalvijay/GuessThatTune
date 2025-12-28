@@ -51,6 +51,8 @@ class SocketService {
 
     this.socket.on(SERVER_EVENTS.GAME_STATE_UPDATE, ({ session }) => {
       console.log('📡 Game state update:', session.status);
+      console.log('   Participants:', session.participantIds?.length || 0);
+      console.log('   Participant IDs:', session.participantIds);
       this.emit('game_state_update', session);
     });
 

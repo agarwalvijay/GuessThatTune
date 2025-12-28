@@ -75,6 +75,32 @@ class SpotifyPlaybackService {
 
       this.currentTrackUri = trackUri;
 
+      // Get track details to validate duration
+      const trackId = trackUri.split(':')[2];
+      const trackResponse = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      const trackDurationMs = trackResponse.data.duration_ms;
+      const trackDurationSec = trackDurationMs / 1000;
+      const requestedStartSec = startPositionMs / 1000;
+
+      console.log('📊 Track duration:', trackDurationSec, 'seconds');
+      console.log('📊 Requested start:', requestedStartSec, 'seconds');
+
+      // If requested start position is beyond the track duration, adjust it
+      if (startPositionMs >= trackDurationMs) {
+        console.warn('⚠️ Start position exceeds track duration, adjusting to 0');
+        startPositionMs = 0;
+      } else if (startPositionMs + (durationSeconds || 0) * 1000 > trackDurationMs) {
+        // If start + duration exceeds track length, adjust start position
+        const maxStartMs = Math.max(0, trackDurationMs - (durationSeconds || 30) * 1000);
+        console.warn(`⚠️ Start position + duration exceeds track, adjusting to ${maxStartMs / 1000}s`);
+        startPositionMs = maxStartMs;
+      }
+
       // Get available devices
       let devices = await this.getDevices();
       console.log('📱 Available Spotify devices:', devices.length);
@@ -133,13 +159,11 @@ class SpotifyPlaybackService {
 
       console.log('🎵 Using Spotify device:', targetDevice.name);
 
-      // If device is not active, we need to transfer playback to it first
-      if (!targetDevice.is_active) {
-        console.log('📱 Transferring playback to device:', targetDevice.name);
-        await this.transferPlayback(targetDevice.id, false);
-        // Wait longer for transfer to complete and device to be ready
-        await new Promise(resolve => setTimeout(resolve, 1500));
-      }
+      // Always transfer playback to ensure device is ready, even if marked as active
+      console.log('📱 Transferring playback to device:', targetDevice.name);
+      await this.transferPlayback(targetDevice.id, false);
+      console.log('⏳ Waiting for device to be ready...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Start playback with retry logic
       const url = `https://api.spotify.com/v1/me/player/play?device_id=${targetDevice.id}`;
@@ -181,6 +205,17 @@ class SpotifyPlaybackService {
 
       console.log('✅ Playback started:', trackUri);
       console.log('Start position:', startPositionMs / 1000, 'seconds');
+
+      // Verify playback actually started by checking state
+      setTimeout(async () => {
+        const state = await this.getPlaybackState();
+        if (state) {
+          console.log('🔊 Playback verification - is_playing:', state.is_playing);
+          console.log('🔊 Current progress:', state.progress_ms / 1000, 'seconds');
+        } else {
+          console.log('⚠️ No playback state found after starting');
+        }
+      }, 1000);
 
       // Set up auto-pause if duration is specified
       if (durationSeconds) {
@@ -245,7 +280,12 @@ class SpotifyPlaybackService {
       );
 
       console.log('⏸️ Playback paused');
-    } catch (error) {
+    } catch (error: any) {
+      // 404 means no active playback - this is fine, nothing to pause
+      if (error.response?.status === 404) {
+        console.log('ℹ️ No active playback to pause (404) - this is fine');
+        return;
+      }
       console.error('Error pausing playback:', error);
       throw error;
     }
