@@ -142,7 +142,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '10px',
   },
   logo: {
-    width: '160px',
+    width: '120px',
     height: 'auto',
   },
   title: {
@@ -197,6 +197,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '20px',
     maxWidth: '1200px',
     margin: '0 auto',
+    justifyContent: 'center',
   },
   playlistCard: {
     backgroundColor: 'white',
