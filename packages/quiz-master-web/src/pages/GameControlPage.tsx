@@ -430,23 +430,31 @@ export function GameControlPage() {
           >
             {showAnswer ? 'HIDE' : 'REVEAL'} SONG
           </button>
-
-          {showAnswer && (
-            <div style={styles.songInfo}>
-              <p style={styles.songTitle}>
-                {currentSong.answer?.title || currentSong.title || currentSong.metadata?.title}
-              </p>
-              <p style={styles.songArtist}>
-                {currentSong.answer?.artist || currentSong.artist || currentSong.metadata?.artist}
-              </p>
-              {(currentSong.metadata?.album || currentSong.album) && (
-                <p style={styles.songAlbum}>
-                  Album: {currentSong.metadata?.album || currentSong.album}
-                </p>
-              )}
-            </div>
-          )}
         </div>
+
+        {/* Song Info Card - Shows when answer is revealed */}
+        {showAnswer && currentSong.metadata && (
+          <div style={styles.songInfoCard}>
+            {currentSong.metadata.imageUrl && (
+              <img
+                src={currentSong.metadata.imageUrl}
+                alt="Album artwork"
+                style={styles.albumArtwork}
+              />
+            )}
+            <div style={styles.songDetails}>
+              <h3 style={styles.songTitle}>
+                {currentSong.answer?.title || currentSong.title || currentSong.metadata.title}
+              </h3>
+              <p style={styles.songArtist}>
+                {currentSong.answer?.artist || currentSong.artist || currentSong.metadata.artist}
+              </p>
+              <p style={styles.songAlbum}>
+                Album: {currentSong.metadata.album}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* QR Code Section */}
         <div style={styles.section}>
@@ -689,30 +697,45 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     width: '100%',
   },
-  songInfo: {
-    marginTop: '16px',
-    padding: '16px',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  songInfoCard: {
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    padding: '20px',
+    marginBottom: '20px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    display: 'flex',
+    gap: '20px',
+    alignItems: 'center',
+  },
+  albumArtwork: {
+    width: '120px',
+    height: '120px',
     borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.25)',
+    objectFit: 'cover' as const,
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+    flexShrink: 0,
+  },
+  songDetails: {
+    flex: 1,
+    minWidth: 0,
   },
   songTitle: {
-    fontSize: '18px',
+    fontSize: '20px',
     fontWeight: '700',
-    color: 'white',
-    marginBottom: '4px',
-    margin: 0,
-  },
-  songArtist: {
-    fontSize: '15px',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#1DB954',
     marginBottom: '8px',
     margin: 0,
   },
+  songArtist: {
+    fontSize: '17px',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: '6px',
+    margin: 0,
+  },
   songAlbum: {
-    fontSize: '14px',
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontStyle: 'italic' as const,
+    fontSize: '15px',
+    color: '#666',
     margin: 0,
   },
   section: {

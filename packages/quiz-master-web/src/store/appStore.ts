@@ -18,6 +18,7 @@ interface Song {
     artist: string;
     album?: string;
     duration?: number;
+    imageUrl?: string;
   };
 }
 
