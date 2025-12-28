@@ -385,7 +385,7 @@ export function GameControlPage() {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <h1 style={styles.appTitle}>SongGame</h1>
+        <h1 style={styles.appTitle}>Guess That Tune!</h1>
 
         {/* Playback Card */}
         <div style={styles.playbackCard}>

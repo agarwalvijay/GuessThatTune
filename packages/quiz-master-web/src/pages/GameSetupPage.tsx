@@ -195,6 +195,7 @@ export function GameSetupPage() {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
+        <img src="/logo.png" alt="Guess That Tune!" style={styles.logo} />
         <h1 style={styles.title}>Waiting for Players</h1>
         <p style={styles.subtitle}>
           Playlist: <strong>{selectedPlaylist?.name}</strong>
@@ -259,6 +260,12 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '800px',
     width: '100%',
     boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+  },
+  logo: {
+    width: '180px',
+    height: 'auto',
+    margin: '0 auto 20px',
+    display: 'block',
   },
   title: {
     fontSize: '32px',

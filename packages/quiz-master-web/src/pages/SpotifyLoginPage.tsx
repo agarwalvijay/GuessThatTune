@@ -46,12 +46,13 @@ export function SpotifyLoginPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>Song Quiz Game</h1>
+        <img src="/logo.png" alt="Guess That Tune!" style={styles.logo} />
+        <h1 style={styles.title}>Guess That Tune!</h1>
         <p style={styles.subtitle}>Quiz Master</p>
 
         <div style={styles.content}>
           <p style={styles.description}>
-            Welcome to Song Quiz Game! Connect your Spotify account to create and host music quiz games.
+            Welcome to Guess That Tune! Connect your Spotify account to create and host music quiz games.
           </p>
 
           <button onClick={handleLogin} style={styles.button}>
@@ -79,6 +80,12 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '450px',
     width: '100%',
     boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+  },
+  logo: {
+    width: '180px',
+    height: 'auto',
+    margin: '0 auto 20px',
+    display: 'block',
   },
   title: {
     fontSize: '32px',

@@ -67,11 +67,14 @@ export function PlaylistSelectionPage() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>Select a Playlist</h1>
+      <div style={styles.headerContainer}>
         <button onClick={handleLogout} style={styles.logoutButton}>
           Logout
         </button>
+      </div>
+      <div style={styles.header}>
+        <img src="/logo.png" alt="Guess That Tune!" style={styles.logo} />
+        <h1 style={styles.title}>Select a Playlist</h1>
       </div>
 
       {error && (
@@ -124,12 +127,23 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     padding: '20px',
   },
+  headerContainer: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    maxWidth: '1200px',
+    margin: '0 auto 10px',
+  },
   header: {
     display: 'flex',
-    justifyContent: 'space-between',
+    flexDirection: 'column' as const,
     alignItems: 'center',
     maxWidth: '1200px',
     margin: '0 auto 30px',
+    gap: '10px',
+  },
+  logo: {
+    width: '160px',
+    height: 'auto',
   },
   title: {
     fontSize: '32px',
