@@ -207,7 +207,6 @@ export function GameSetupPage() {
               <>
                 <QRCodeSVG value={joinUrl} size={250} level="H" />
                 <p style={styles.joinUrl}>{joinUrl}</p>
-                <p style={styles.sessionId}>Session ID: {gameSession.id}</p>
               </>
             )}
           </div>
@@ -299,10 +298,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#666',
     textAlign: 'center',
     wordBreak: 'break-all',
-  },
-  sessionId: {
-    fontSize: '12px',
-    color: '#999',
   },
   participantsSection: {
     marginBottom: '32px',

@@ -159,7 +159,7 @@ class ApiService {
   /**
    * Advance to the next round
    */
-  async nextRound(sessionId: string): Promise<{ gameComplete: boolean }> {
+  async nextRound(sessionId: string): Promise<{ gameComplete: boolean; session?: GameSession }> {
     const response = await this.api.post(`/api/game/${sessionId}/next`);
     return response.data;
   }
@@ -167,8 +167,9 @@ class ApiService {
   /**
    * End the game session
    */
-  async endGameSession(sessionId: string): Promise<void> {
-    await this.api.post(`/api/game/${sessionId}/end`);
+  async endGameSession(sessionId: string): Promise<{ session: GameSession; finalScores: any[] }> {
+    const response = await this.api.post(`/api/game/${sessionId}/end`);
+    return response.data;
   }
 
   /**

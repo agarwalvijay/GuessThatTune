@@ -20,9 +20,17 @@
 }
 
 .results-header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   margin-bottom: 30px;
   position: relative;
+}
+
+.results-logo {
+  height: 40px;
+  width: auto;
 }
 
 .results-title {

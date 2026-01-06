@@ -49,6 +49,7 @@ export function ResultsPage() {
     <div className="results-page">
       <div className="results-container">
         <div className="results-header">
+          <img src="/logo.png" alt="Guess That Tune!" className="results-logo" />
           <h1 className="results-title">Game Over!</h1>
           {isWinner && <div className="winner-crown">👑</div>}
         </div>

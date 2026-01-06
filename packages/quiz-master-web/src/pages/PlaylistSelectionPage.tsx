@@ -67,14 +67,14 @@ export function PlaylistSelectionPage() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.headerContainer}>
+      <div style={styles.header}>
+        <div style={styles.headerLeft}>
+          <img src="/logo.png" alt="Guess That Tune!" style={styles.logo} />
+          <h1 style={styles.title}>Select a Playlist</h1>
+        </div>
         <button onClick={handleLogout} style={styles.logoutButton}>
           Logout
         </button>
-      </div>
-      <div style={styles.header}>
-        <img src="/logo.png" alt="Guess That Tune!" style={styles.logo} />
-        <h1 style={styles.title}>Select a Playlist</h1>
       </div>
 
       {error && (
@@ -127,28 +127,27 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     padding: '20px',
   },
-  headerContainer: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    maxWidth: '1200px',
-    margin: '0 auto 10px',
-  },
   header: {
     display: 'flex',
-    flexDirection: 'column' as const,
+    justifyContent: 'space-between',
     alignItems: 'center',
     maxWidth: '1200px',
     margin: '0 auto 30px',
-    gap: '10px',
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
   },
   logo: {
-    width: '120px',
-    height: 'auto',
+    height: '40px',
+    width: 'auto',
   },
   title: {
-    fontSize: '32px',
+    fontSize: '24px',
     fontWeight: 'bold',
     color: 'white',
+    margin: 0,
   },
   logoutButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

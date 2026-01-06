@@ -309,6 +309,11 @@ export function GameControlPage() {
 
       if (result.gameComplete) {
         console.log('Game complete! Navigating to results');
+        // Update session state to 'ended' before navigating
+        if (result.session) {
+          console.log('Updating session status to:', result.session.status);
+          setGameSession(result.session);
+        }
         // Navigate to results
         navigate('/results');
       } else {
@@ -333,7 +338,12 @@ export function GameControlPage() {
     try {
       // Stop playback before ending the game
       await spotifyPlaybackService.pause();
-      await apiService.endGameSession(gameSession.id);
+      const result = await apiService.endGameSession(gameSession.id);
+      // Update session state to 'ended' before navigating
+      if (result && result.session) {
+        console.log('Updating session status to:', result.session.status);
+        setGameSession(result.session);
+      }
       // Navigate to results page to show final scores
       navigate('/results');
     } catch (error) {
@@ -385,7 +395,10 @@ export function GameControlPage() {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <h1 style={styles.appTitle}>Guess That Tune!</h1>
+        <div style={styles.header}>
+          <img src="/logo.png" alt="Guess That Tune!" style={styles.headerLogo} />
+          <h1 style={styles.appTitle}>Guess That Tune!</h1>
+        </div>
 
         {/* Two Column Layout: Buzzer Events & Scores */}
         <div style={styles.twoColumnContainer}>
@@ -611,12 +624,22 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0 auto',
     paddingBottom: '32px',
   },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '16px',
+  },
   appTitle: {
     fontSize: '28px',
     fontWeight: '800',
     color: '#667eea',
-    marginBottom: '16px',
+    margin: 0,
     letterSpacing: '-0.5px',
+  },
+  headerLogo: {
+    height: '40px',
+    width: 'auto',
   },
   playbackCard: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -876,6 +899,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '20px',
   },
   nextButton: {
+    flex: 1,
     padding: '16px',
     borderRadius: '12px',
     backgroundColor: '#667eea',
