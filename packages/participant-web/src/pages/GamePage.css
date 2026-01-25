@@ -16,7 +16,7 @@
 .game-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
@@ -165,7 +165,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 0;
+  padding: clamp(15px, 5vh, 40px) 0;
 }
 
 .buzzer {
@@ -188,6 +188,24 @@
   .buzzer {
     width: min(240px, 75vw);
     height: min(240px, 75vw);
+  }
+}
+
+/* For phones with limited vertical space (landscape or small screens) */
+@media (max-height: 600px) {
+  .buzzer {
+    width: min(180px, 50vw);
+    height: min(180px, 50vw);
+    font-size: clamp(1.2rem, 4vw, 1.5rem);
+  }
+
+  .game-header {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .game-logo {
+    height: 30px;
   }
 }
 
@@ -230,8 +248,8 @@
 }
 
 .buzzer-hint {
-  margin-top: 30px;
-  font-size: 1.1rem;
+  margin-top: clamp(15px, 4vh, 30px);
+  font-size: clamp(0.9rem, 3.5vw, 1.1rem);
   color: white;
   text-align: center;
   font-weight: 500;
@@ -242,11 +260,11 @@
 }
 
 .pulse {
-  width: 100px;
-  height: 100px;
+  width: clamp(60px, 15vw, 100px);
+  height: clamp(60px, 15vw, 100px);
   background: white;
   border-radius: 50%;
-  margin: 0 auto 20px;
+  margin: 0 auto clamp(10px, 3vh, 20px);
   animation: pulse 2s infinite;
 }
 
@@ -262,14 +280,14 @@
 }
 
 .waiting-indicator p {
-  font-size: 1.3rem;
+  font-size: clamp(1rem, 4vw, 1.3rem);
   color: white;
   font-weight: 600;
 }
 
 .winner-message {
-  margin-top: 30px;
-  font-size: 1.8rem;
+  margin-top: clamp(15px, 4vh, 30px);
+  font-size: clamp(1.3rem, 5vw, 1.8rem);
   color: white;
   font-weight: 800;
   animation: celebrate 0.5s ease-in-out;
@@ -287,13 +305,20 @@
 .game-footer {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
-  padding: 20px;
+  padding: 15px 20px;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+@media (max-width: 480px) {
+  .game-footer {
+    padding: 12px 15px;
+    border-radius: 12px;
+  }
+}
+
 .status-text {
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 3.5vw, 1.1rem);
   color: #666;
   font-weight: 600;
 }

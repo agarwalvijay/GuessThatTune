@@ -39,17 +39,17 @@
 }
 
 .participant-info {
-  margin-bottom: 30px;
+  margin-bottom: clamp(20px, 5vw, 30px);
 }
 
 .your-name {
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 4vw, 1.2rem);
   color: #666;
   margin-bottom: 10px;
 }
 
 .connection-status {
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 3.5vw, 1rem);
   color: #666;
 }
 
@@ -81,7 +81,7 @@
 }
 
 .participants-count {
-  margin-bottom: 30px;
+  margin-bottom: clamp(20px, 5vw, 30px);
 }
 
 .count-number {
@@ -100,7 +100,7 @@
   display: flex;
   justify-content: center;
   gap: 10px;
-  margin-bottom: 30px;
+  margin-bottom: clamp(20px, 5vw, 30px);
 }
 
 .dot {
@@ -129,7 +129,7 @@
 }
 
 .waiting-message {
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 3.5vw, 1rem);
   color: #999;
   line-height: 1.6;
 }

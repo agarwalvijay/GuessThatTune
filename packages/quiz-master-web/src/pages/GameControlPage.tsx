@@ -317,6 +317,11 @@ export function GameControlPage() {
         // Navigate to results
         navigate('/results');
       } else {
+        // Update session immediately from API response to avoid race condition
+        // where GAME_STATE_UPDATE socket event arrives after the 100ms timeout
+        if (result.session) {
+          setGameSession(result.session);
+        }
         console.log('Waiting for SONG_STARTED event for next round...');
         // Clear buzzer events for new round
         setBuzzerEvents([]);

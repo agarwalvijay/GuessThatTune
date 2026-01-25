@@ -24,7 +24,7 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 30px;
+  margin-bottom: clamp(20px, 5vw, 30px);
   position: relative;
 }
 
@@ -92,16 +92,16 @@
 .final-scores {
   background: white;
   border-radius: 20px;
-  padding: 25px;
-  margin-bottom: 30px;
+  padding: clamp(15px, 5vw, 25px);
+  margin-bottom: clamp(20px, 5vw, 30px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .scores-title {
-  font-size: 1.3rem;
+  font-size: clamp(1.1rem, 4vw, 1.3rem);
   font-weight: 700;
   color: #333;
-  margin: 0 0 20px 0;
+  margin: 0 0 clamp(15px, 4vw, 20px) 0;
   text-align: center;
 }
 
@@ -114,8 +114,8 @@
 .score-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 15px;
+  gap: clamp(10px, 3vw, 15px);
+  padding: clamp(10px, 3vw, 15px);
   background: #f8f9fa;
   border-radius: 12px;
   transition: transform 0.2s;
@@ -132,19 +132,19 @@
 }
 
 .score-rank {
-  font-size: 1.5rem;
-  width: 40px;
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+  width: clamp(30px, 8vw, 40px);
   text-align: center;
 }
 
 .score-name {
   flex: 1;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 3.5vw, 1rem);
   color: #333;
 }
 
 .score-points {
-  font-size: 1.1rem;
+  font-size: clamp(0.95rem, 3.5vw, 1.1rem);
   font-weight: 700;
   color: #667eea;
 }
@@ -181,8 +181,8 @@
 
 .leave-button {
   width: 100%;
-  padding: 16px;
-  font-size: 1rem;
+  padding: clamp(12px, 3vw, 16px);
+  font-size: clamp(0.9rem, 3.5vw, 1rem);
   font-weight: 600;
   color: white;
   background: rgba(255, 255, 255, 0.15);
