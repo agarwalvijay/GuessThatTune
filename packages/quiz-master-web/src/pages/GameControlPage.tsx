@@ -317,15 +317,27 @@ export function GameControlPage() {
         // Navigate to results
         navigate('/results');
       } else {
-        // Update session immediately from API response to avoid race condition
-        // where GAME_STATE_UPDATE socket event arrives after the 100ms timeout
+        // Update session and start next round directly from API response
+        // Don't rely on socket events which can be unreliable on mobile
         if (result.session) {
           setGameSession(result.session);
+
+          // Directly set up the next round from the API response
+          const song = result.session.songs?.[result.session.currentRoundIndex];
+          if (song) {
+            console.log('🎵 Setting up next round directly from API response');
+            setCurrentRound({
+              roundIndex: result.session.currentRoundIndex,
+              song: song,
+            });
+          }
+
+          // Reset UI state for new round
+          setShowAnswer(false);
+          setBuzzerEvents([]);
+          setElapsedSeconds(0);
+          setTimeRemaining(result.session.settings.songDuration);
         }
-        console.log('Waiting for SONG_STARTED event for next round...');
-        // Clear buzzer events for new round
-        setBuzzerEvents([]);
-        setShowAnswer(false);
       }
     } catch (error) {
       console.error('Error advancing to next round:', error);

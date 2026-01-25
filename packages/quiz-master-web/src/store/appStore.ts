@@ -49,6 +49,11 @@ interface Playlist {
   tracks: { total: number };
 }
 
+interface GameSettings {
+  songDuration: number;
+  numberOfSongs: number;
+}
+
 interface AppState {
   // Auth
   accessToken: string | null;
@@ -59,6 +64,7 @@ interface AppState {
   selectedPlaylist: Playlist | null;
   songs: Song[];
   gameSession: GameSession | null;
+  gameSettings: GameSettings;
 
   // Actions
   setAccessToken: (token: string | null) => void;
@@ -66,6 +72,7 @@ interface AppState {
   setSelectedPlaylist: (playlist: Playlist | null) => void;
   setSongs: (songs: Song[]) => void;
   setGameSession: (session: GameSession | null) => void;
+  setGameSettings: (settings: GameSettings) => void;
   reset: () => void;
 }
 
@@ -77,6 +84,10 @@ export const useAppStore = create<AppState>((set) => ({
   selectedPlaylist: null,
   songs: [],
   gameSession: null,
+  gameSettings: {
+    songDuration: 30,
+    numberOfSongs: 10,
+  },
 
   // Actions
   setAccessToken: (token) => set({ accessToken: token, isAuthenticated: !!token }),
@@ -84,6 +95,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedPlaylist: (playlist) => set({ selectedPlaylist: playlist }),
   setSongs: (songs) => set({ songs }),
   setGameSession: (session) => set({ gameSession: session }),
+  setGameSettings: (settings) => set({ gameSettings: settings }),
   reset: () => set({
     accessToken: null,
     isAuthenticated: false,
@@ -91,7 +103,11 @@ export const useAppStore = create<AppState>((set) => ({
     selectedPlaylist: null,
     songs: [],
     gameSession: null,
+    gameSettings: {
+      songDuration: 30,
+      numberOfSongs: 10,
+    },
   }),
 }));
 
-export type { Song, GameSession, Playlist };
+export type { Song, GameSession, Playlist, GameSettings };

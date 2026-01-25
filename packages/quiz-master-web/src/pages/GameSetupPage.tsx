@@ -14,14 +14,16 @@ export function GameSetupPage() {
     selectedPlaylist,
     gameSession,
     setGameSession,
+    gameSettings,
   } = useAppStore();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hostName] = useState('Quiz Master');
-  const [numberOfSongs] = useState(10);
-  const [songDuration] = useState(30);
   const [participants, setParticipants] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Use settings from store
+  const { songDuration, numberOfSongs } = gameSettings;
 
   // Keep screen awake during game setup
   useWakeLock(true);
