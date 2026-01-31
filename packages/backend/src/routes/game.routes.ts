@@ -215,6 +215,34 @@ router.post('/:sessionId/score', (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/game/:sessionId/incorrect
+ * Mark an answer as incorrect and deduct points
+ */
+router.post('/:sessionId/incorrect', (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const { roundId, participantId } = req.body;
+
+  if (!roundId || !participantId) {
+    return res.status(400).json({ error: 'roundId and participantId are required' });
+  }
+
+  const score = gameSessionService.markAnswerIncorrect(sessionId, roundId, participantId);
+  const session = gameSessionService.getSession(sessionId);
+
+  // Broadcast score update to all participants
+  if (io && session) {
+    io.to(sessionId).emit(SERVER_EVENTS.SCORE_UPDATE, { scores: session.scores });
+    io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
+  }
+
+  return res.json({
+    success: true,
+    score,
+    scores: session?.scores,
+  });
+});
+
+/**
  * POST /api/game/:sessionId/pause
  * Pause the game
  */

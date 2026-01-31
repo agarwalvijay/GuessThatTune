@@ -77,6 +77,7 @@ class ApiService {
         spotifyUri: item.track.uri,
         previewUrl: item.track.preview_url || undefined,
         durationMs: item.track.duration_ms,
+        imageUrl: item.track.album.images?.[0]?.url || undefined, // Album artwork
       }));
 
     console.log(`✅ Found ${allTracks.length} playable tracks in playlist`);
@@ -94,6 +95,7 @@ class ApiService {
     settings: {
       songDuration: number;
       numberOfSongs: number;
+      negativePointsPercentage: number;
     };
   }): Promise<GameSession> {
     // Transform songs to match backend expected format
@@ -106,6 +108,7 @@ class ApiService {
         artist: song.artist || '',
         album: song.album || '',
         duration: song.durationMs ? Math.floor(song.durationMs / 1000) : 180, // Convert ms to seconds
+        imageUrl: song.imageUrl || undefined,
       },
       answer: {
         title: song.title || '',
@@ -157,6 +160,16 @@ class ApiService {
   }
 
   /**
+   * Mark an answer as incorrect and deduct points
+   */
+  async markIncorrect(sessionId: string, roundId: string, participantId: string): Promise<void> {
+    await this.api.post(`/api/game/${sessionId}/incorrect`, {
+      roundId,
+      participantId,
+    });
+  }
+
+  /**
    * Advance to the next round
    */
   async nextRound(sessionId: string): Promise<{ gameComplete: boolean; session?: GameSession }> {
@@ -186,6 +199,7 @@ class ApiService {
         artist: song.artist || '',
         album: song.album || '',
         duration: song.durationMs ? Math.floor(song.durationMs / 1000) : 180,
+        imageUrl: song.imageUrl || undefined,
       },
       answer: {
         title: song.title || '',

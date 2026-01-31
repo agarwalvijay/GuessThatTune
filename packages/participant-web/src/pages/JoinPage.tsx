@@ -8,31 +8,33 @@ export function JoinPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [name, setName] = useState('');
+  const [manualSessionId, setManualSessionId] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const setParticipantName = useParticipantStore((state) => state.setParticipantName);
   const setSessionId = useParticipantStore((state) => state.setSessionId);
-  const sessionId = searchParams.get('session');
+  const urlSessionId = searchParams.get('session');
+
+  // Use session ID from URL if available, otherwise use manually entered one
+  const sessionId = urlSessionId || manualSessionId;
 
   useEffect(() => {
-    if (!sessionId) {
-      alert('No session ID found in URL');
-      return;
+    if (urlSessionId) {
+      setSessionId(urlSessionId);
     }
-    setSessionId(sessionId);
-  }, [sessionId, setSessionId]);
+  }, [urlSessionId, setSessionId]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      setError('Please enter your name');
+    if (!sessionId || !sessionId.trim()) {
+      setError('Please enter a session code');
       return;
     }
 
-    if (!sessionId) {
-      setError('No session ID found');
+    if (!name.trim()) {
+      setError('Please enter your name');
       return;
     }
 
@@ -40,10 +42,12 @@ export function JoinPage() {
     setError(null);
 
     try {
-      const result = await socketService.joinGame(sessionId, name.trim());
+      const normalizedSessionId = sessionId.trim().toUpperCase();
+      const result = await socketService.joinGame(normalizedSessionId, name.trim());
 
       if (result.success) {
         setParticipantName(name.trim());
+        setSessionId(normalizedSessionId);
         navigate('/waiting');
       } else {
         setError(result.error || 'Failed to join game');
@@ -63,10 +67,24 @@ export function JoinPage() {
         <p className="join-subtitle">Join the fun!</p>
 
         {sessionId && (
-          <p className="session-info">Session: {sessionId.substring(0, 8)}...</p>
+          <p className="session-info">Session: {sessionId}</p>
         )}
 
         <form onSubmit={handleJoin} className="join-form">
+          {/* Show session ID input if not provided in URL */}
+          {!urlSessionId && (
+            <input
+              type="text"
+              value={manualSessionId}
+              onChange={(e) => setManualSessionId(e.target.value.toUpperCase())}
+              placeholder="Enter session code"
+              className="name-input"
+              maxLength={5}
+              autoFocus
+              disabled={isJoining}
+            />
+          )}
+
           <input
             type="text"
             value={name}
@@ -74,7 +92,7 @@ export function JoinPage() {
             placeholder="Enter your name"
             className="name-input"
             maxLength={20}
-            autoFocus
+            autoFocus={!!urlSessionId}
             disabled={isJoining}
           />
 
@@ -83,7 +101,7 @@ export function JoinPage() {
           <button
             type="submit"
             className="join-button"
-            disabled={isJoining || !name.trim()}
+            disabled={isJoining || !name.trim() || !sessionId}
           >
             {isJoining ? 'Joining...' : 'Join Game'}
           </button>

@@ -13,6 +13,7 @@ export function PlaylistSelectionPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [tempSongDuration, setTempSongDuration] = useState(gameSettings.songDuration);
   const [tempNumberOfSongs, setTempNumberOfSongs] = useState(gameSettings.numberOfSongs);
+  const [tempNegativePointsPercentage, setTempNegativePointsPercentage] = useState(gameSettings.negativePointsPercentage);
 
   useEffect(() => {
     if (!accessToken) {
@@ -61,6 +62,7 @@ export function PlaylistSelectionPage() {
   const handleOpenSettings = () => {
     setTempSongDuration(gameSettings.songDuration);
     setTempNumberOfSongs(gameSettings.numberOfSongs);
+    setTempNegativePointsPercentage(gameSettings.negativePointsPercentage);
     setShowSettings(true);
   };
 
@@ -68,6 +70,7 @@ export function PlaylistSelectionPage() {
     setGameSettings({
       songDuration: tempSongDuration,
       numberOfSongs: tempNumberOfSongs,
+      negativePointsPercentage: tempNegativePointsPercentage,
     });
     setShowSettings(false);
   };
@@ -144,6 +147,28 @@ export function PlaylistSelectionPage() {
               <div style={styles.sliderLabels}>
                 <span>5</span>
                 <span>30</span>
+              </div>
+            </div>
+
+            <div style={styles.settingGroup}>
+              <label style={styles.settingLabel}>
+                Wrong Answer Penalty: {tempNegativePointsPercentage}%
+              </label>
+              <p style={styles.settingDescription}>
+                Deduct this percentage of potential points when participants answer incorrectly
+              </p>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={tempNegativePointsPercentage}
+                onChange={(e) => setTempNegativePointsPercentage(Number(e.target.value))}
+                style={styles.slider}
+              />
+              <div style={styles.sliderLabels}>
+                <span>0%</span>
+                <span>100%</span>
               </div>
             </div>
 
@@ -291,6 +316,12 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '16px',
     fontWeight: '600',
     color: '#333',
+    marginBottom: '12px',
+  },
+  settingDescription: {
+    fontSize: '13px',
+    color: '#666',
+    marginTop: '-8px',
     marginBottom: '12px',
   },
   slider: {

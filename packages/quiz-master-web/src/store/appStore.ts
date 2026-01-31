@@ -8,6 +8,7 @@ interface Song {
   spotifyUri: string;
   previewUrl?: string;
   durationMs?: number;
+  imageUrl?: string;
   // Backend format
   answer?: {
     title: string;
@@ -22,6 +23,15 @@ interface Song {
   };
 }
 
+interface BuzzerEvent {
+  id: string;
+  participantId: string;
+  participantName: string;
+  elapsedSeconds: number;
+  score?: number;
+  isCorrect?: boolean;
+}
+
 interface GameSession {
   id: string;
   status: string;
@@ -31,6 +41,7 @@ interface GameSession {
     isComplete: boolean;
     winnerId?: string;
     songStartOffset?: number;
+    buzzerEvents?: BuzzerEvent[];
   }>;
   participantIds: string[];
   participants?: Array<{ id: string; name: string }>;
@@ -52,6 +63,7 @@ interface Playlist {
 interface GameSettings {
   songDuration: number;
   numberOfSongs: number;
+  negativePointsPercentage: number;
 }
 
 interface AppState {
@@ -87,6 +99,7 @@ export const useAppStore = create<AppState>((set) => ({
   gameSettings: {
     songDuration: 30,
     numberOfSongs: 10,
+    negativePointsPercentage: 25,
   },
 
   // Actions
@@ -106,6 +119,7 @@ export const useAppStore = create<AppState>((set) => ({
     gameSettings: {
       songDuration: 30,
       numberOfSongs: 10,
+      negativePointsPercentage: 25,
     },
   }),
 }));

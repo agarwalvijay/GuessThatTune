@@ -23,7 +23,7 @@ export function GameSetupPage() {
   const [participants, setParticipants] = useState<Array<{ id: string; name: string }>>([]);
 
   // Use settings from store
-  const { songDuration, numberOfSongs } = gameSettings;
+  const { songDuration, numberOfSongs, negativePointsPercentage } = gameSettings;
 
   // Keep screen awake during game setup
   useWakeLock(true);
@@ -138,6 +138,7 @@ export function GameSetupPage() {
           settings: {
             songDuration,
             numberOfSongs: Math.min(numberOfSongs, shuffledSongs.length),
+            negativePointsPercentage,
           },
         });
       }

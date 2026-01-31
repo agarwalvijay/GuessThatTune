@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAppStore } from '../store/appStore';
@@ -7,6 +7,7 @@ import { socketService } from '../services/socketService';
 import { spotifyPlaybackService } from '../services/spotifyPlaybackService';
 import { config } from '../config/environment';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { playBuzzSound } from '../utils/soundEffects';
 import type { Song } from '../store/appStore';
 
 interface RoundData {
@@ -20,6 +21,8 @@ interface BuzzerEvent {
   participantName: string;
   elapsedSeconds: number;
   position: number;
+  score?: number;
+  isCorrect?: boolean;
 }
 
 export function GameControlPage() {
@@ -36,8 +39,16 @@ export function GameControlPage() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAwarding, setIsAwarding] = useState(false);
 
+  // Use ref to track playing state for event handlers
+  const isPlayingRef = useRef(false);
+
   // Keep screen awake during gameplay
   useWakeLock(true);
+
+  // Sync ref with state
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   useEffect(() => {
     console.log('GameControlPage mounted', { accessToken: !!accessToken, gameSession });
@@ -203,7 +214,23 @@ export function GameControlPage() {
 
     socketService.on('buzzer_event', (data: { buzzerEvent: BuzzerEvent; position: number }) => {
       console.log('🔔 Buzzer event received:', data.buzzerEvent.participantName);
+      console.log('🎵 Song is playing:', isPlayingRef.current);
       setBuzzerEvents((prev) => [...prev, { ...data.buzzerEvent, position: data.position }]);
+
+      // Play buzz sound only if song is currently playing
+      if (isPlayingRef.current) {
+        console.log('🔊 Triggering buzz sound');
+        playBuzzSound();
+      } else {
+        console.log('⏸️ Song not playing, skipping buzz sound');
+      }
+
+      // Pause song playback when someone buzzes in
+      console.log('⏸️ Pausing playback');
+      spotifyPlaybackService.pause().catch((err: any) => {
+        console.error('Error pausing:', err);
+      });
+      setIsPlaying(false);
     });
 
     socketService.onRoundEnded((data) => {
@@ -230,6 +257,18 @@ export function GameControlPage() {
       console.log('📡 Session update received. CurrentRoundIndex:', data.session.currentRoundIndex);
       console.log('Session status:', data.session.status);
       setGameSession(data.session);
+
+      // Sync local buzzerEvents with the current round's buzzer events from the session
+      if (data.session.rounds && data.session.currentRoundIndex >= 0) {
+        const currentRoundData = data.session.rounds[data.session.currentRoundIndex];
+        if (currentRoundData && currentRoundData.buzzerEvents) {
+          // Update local buzzerEvents to include isCorrect status from backend
+          setBuzzerEvents(currentRoundData.buzzerEvents.map((event, index) => ({
+            ...event,
+            position: index + 1,
+          })));
+        }
+      }
     });
   };
 
@@ -268,10 +307,54 @@ export function GameControlPage() {
         return;
       }
 
+      // Find the position of the participant being marked correct
+      const correctParticipantEvent = buzzerEvents.find(e => e.participantId === participantId);
+
+      if (correctParticipantEvent) {
+        // Mark all participants who buzzed in before this one as incorrect
+        const earlierBuzzers = buzzerEvents.filter(e =>
+          e.position < correctParticipantEvent.position &&
+          e.isCorrect === undefined // Only mark if not already judged
+        );
+
+        // Mark all earlier buzzers as incorrect
+        for (const event of earlierBuzzers) {
+          try {
+            await apiService.markIncorrect(gameSession.id, roundId, event.participantId);
+            console.log('❌ Auto-marked incorrect:', event.participantName);
+          } catch (error) {
+            console.error('Error marking incorrect:', event.participantName, error);
+          }
+        }
+      }
+
+      // Now mark the selected participant as correct
       await apiService.awardPoints(gameSession.id, roundId, participantId);
     } catch (error) {
       console.error('Error awarding points:', error);
       alert('Failed to award points');
+    } finally {
+      setIsAwarding(false);
+    }
+  };
+
+  const handleMarkIncorrect = async (participantId: string, participantName: string) => {
+    if (!currentRound || !gameSession) return;
+
+    try {
+      setIsAwarding(true);
+      console.log('❌ Marking incorrect:', participantName);
+
+      const roundId = gameSession.rounds?.[currentRound.roundIndex]?.id;
+      if (!roundId) {
+        console.error('No round ID found');
+        return;
+      }
+
+      await apiService.markIncorrect(gameSession.id, roundId, participantId);
+    } catch (error) {
+      console.error('Error marking incorrect:', error);
+      alert('Failed to mark incorrect');
     } finally {
       setIsAwarding(false);
     }
@@ -345,10 +428,10 @@ export function GameControlPage() {
     }
   };
 
-  const handleEndGame = async () => {
+  const handleEndGame = async (skipConfirm = false) => {
     if (!gameSession) return;
 
-    if (!confirm('Are you sure you want to end the game?')) {
+    if (!skipConfirm && !confirm('Are you sure you want to end the game?')) {
       return;
     }
 
@@ -423,7 +506,7 @@ export function GameControlPage() {
           <div style={styles.column}>
             <h2 style={styles.sectionTitle}>Who Buzzed In</h2>
             <div style={styles.buzzerListContainer}>
-              {gameSession.participants && gameSession.participants.length > 0 ? (
+              {buzzerEvents.length > 0 ? (
                 (() => {
                   // Create a map of buzzer events for quick lookup
                   const buzzerMap = new Map(
@@ -433,59 +516,70 @@ export function GameControlPage() {
                     ])
                   );
 
-                  // Sort participants: buzzed players first (by buzz position), then others
-                  const sortedParticipants = [...gameSession.participants].sort((a, b) => {
-                    const aBuzzed = buzzerMap.has(a.id);
-                    const bBuzzed = buzzerMap.has(b.id);
+                  // Filter to only show participants who have buzzed
+                  const buzzedParticipants = (gameSession.participants || []).filter((p) =>
+                    buzzerMap.has(p.id)
+                  );
 
-                    if (aBuzzed && !bBuzzed) return -1;
-                    if (!aBuzzed && bBuzzed) return 1;
-
-                    if (aBuzzed && bBuzzed) {
-                      // Both buzzed - sort by position (earlier buzz first)
-                      return buzzerMap.get(a.id)!.position - buzzerMap.get(b.id)!.position;
-                    }
-
-                    // Neither buzzed - keep original order
-                    return 0;
+                  // Sort by buzz position (earlier buzz first)
+                  const sortedParticipants = buzzedParticipants.sort((a, b) => {
+                    const aPosition = buzzerMap.get(a.id)!.position;
+                    const bPosition = buzzerMap.get(b.id)!.position;
+                    return aPosition - bPosition;
                   });
 
                   return sortedParticipants.map((participant) => {
-                    const buzzerData = buzzerMap.get(participant.id);
-                    const hasBuzzed = buzzerData != null;
+                    const buzzerData = buzzerMap.get(participant.id)!;
+                    const buzzerEvent = buzzerEvents.find(e => e.participantId === participant.id);
+                    const isCorrect = buzzerEvent?.isCorrect === true;
+                    const isIncorrect = buzzerEvent?.isCorrect === false;
+                    const hasBeenJudged = winnerId === participant.id || isCorrect || isIncorrect;
 
                     return (
-                      <button
+                      <div
                         key={participant.id}
                         style={{
                           ...styles.buzzerCard,
-                          ...(hasBuzzed ? {} : styles.buzzerCardInactive),
-                          ...(winnerId === participant.id ? styles.buzzerCardWinner : {}),
+                          ...(isCorrect ? styles.buzzerCardWinner : {}),
+                          ...(isIncorrect ? styles.buzzerCardIncorrect : {}),
                         }}
-                        onClick={() => hasBuzzed && handleAwardPoints(participant.id, participant.name)}
-                        disabled={!hasBuzzed || isAwarding || winnerId != null}
                       >
                         <div style={styles.buzzerInfo}>
-                          <p style={{
-                            ...styles.buzzerName,
-                            ...(hasBuzzed ? {} : styles.buzzerNameInactive),
-                          }}>
+                          <p style={styles.buzzerName}>
                             {participant.name}
                           </p>
-                          {hasBuzzed && (
-                            <p style={styles.buzzerTime}>🔔 {buzzerData.time.toFixed(2)}s</p>
-                          )}
+                          <p style={styles.buzzerTime}>🔔 {buzzerData.time.toFixed(2)}s</p>
                         </div>
-                        {winnerId === participant.id && (
-                          <span style={styles.winnerBadge}>✓ Correct</span>
+                        {!hasBeenJudged ? (
+                          <div style={styles.buzzerActions}>
+                            <button
+                              style={styles.correctButton}
+                              onClick={() => handleAwardPoints(participant.id, participant.name)}
+                              disabled={isAwarding}
+                            >
+                              ✓
+                            </button>
+                            <button
+                              style={styles.incorrectButton}
+                              onClick={() => handleMarkIncorrect(participant.id, participant.name)}
+                              disabled={isAwarding}
+                            >
+                              ✗
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            {isCorrect && <span style={styles.winnerBadge}>✓ Correct</span>}
+                            {isIncorrect && <span style={styles.incorrectBadge}>✗ Wrong</span>}
+                          </>
                         )}
-                      </button>
+                      </div>
                     );
                   });
                 })()
               ) : (
                 <div style={styles.emptyState}>
-                  <p style={styles.emptyText}>No participants yet</p>
+                  <p style={styles.emptyText}>No one has buzzed in yet</p>
                 </div>
               )}
             </div>
@@ -524,13 +618,13 @@ export function GameControlPage() {
         <div style={styles.controls}>
           <button
             style={styles.nextButton}
-            onClick={handleNextRound}
+            onClick={() => songNumber === totalSongs ? handleEndGame(true) : handleNextRound()}
           >
             {songNumber === totalSongs ? 'Finish Game' : 'Next Round'}
           </button>
           <button
             style={styles.endButton}
-            onClick={handleEndGame}
+            onClick={() => handleEndGame(false)}
           >
             End Game
           </button>
@@ -847,7 +941,6 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
     border: '1px solid #f0f0f0',
-    cursor: 'pointer',
     textAlign: 'left' as const,
     width: '100%',
   },
@@ -859,6 +952,11 @@ const styles: Record<string, React.CSSProperties> = {
   buzzerCardWinner: {
     backgroundColor: '#f0f9f4',
     borderColor: '#34d399',
+    borderWidth: '1.5px',
+  },
+  buzzerCardIncorrect: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#ef4444',
     borderWidth: '1.5px',
   },
   buzzerInfo: {
@@ -884,6 +982,37 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     fontWeight: '600',
     color: '#10b981',
+  },
+  incorrectBadge: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  buzzerActions: {
+    display: 'flex',
+    gap: '8px',
+  },
+  correctButton: {
+    backgroundColor: '#10b981',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '8px 16px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  incorrectButton: {
+    backgroundColor: '#ef4444',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '8px 16px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   scoresList: {
     backgroundColor: 'white',

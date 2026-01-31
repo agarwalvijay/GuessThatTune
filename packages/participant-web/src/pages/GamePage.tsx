@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useParticipantStore } from '../store/participantStore';
 import { socketService } from '../services/socketService';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { playBuzzSound } from '../utils/soundEffects';
 import './GamePage.css';
 
 export function GamePage() {
@@ -37,6 +38,14 @@ export function GamePage() {
 
   const handleBuzz = async () => {
     if (buzzerDisabled || hasBuzzed || !sessionId) return;
+
+    // Play buzz sound immediately for feedback
+    playBuzzSound();
+
+    // Vibrate for haptic feedback (200ms)
+    if ('vibrate' in navigator) {
+      navigator.vibrate(200);
+    }
 
     try {
       await socketService.buzzIn(sessionId);

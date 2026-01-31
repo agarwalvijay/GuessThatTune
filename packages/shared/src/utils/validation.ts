@@ -9,7 +9,12 @@ export function isValidParticipantName(name: string): boolean {
 }
 
 export function isValidSessionId(sessionId: string): boolean {
-  return typeof sessionId === 'string' && sessionId.length > 0;
+  // Session IDs are 5-character alphanumeric codes (case-insensitive)
+  return (
+    typeof sessionId === 'string' &&
+    sessionId.length === 5 &&
+    /^[A-Za-z0-9]{5}$/.test(sessionId)
+  );
 }
 
 export function sanitizeParticipantName(name: string): string {

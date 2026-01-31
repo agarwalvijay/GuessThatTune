@@ -17,10 +17,35 @@ export class GameSessionService {
   private buzzerRateLimits: Map<string, number> = new Map();
 
   /**
+   * Generate a unique 5-character session code
+   */
+  private generateSessionCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluded confusing chars: 0, O, 1, I
+    let code: string;
+
+    // Keep generating until we find a unique code
+    do {
+      code = '';
+      for (let i = 0; i < 5; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+    } while (this.sessions.has(code));
+
+    return code;
+  }
+
+  /**
+   * Normalize session ID to uppercase for case-insensitive lookups
+   */
+  private normalizeSessionId(sessionId: string): string {
+    return sessionId.toUpperCase();
+  }
+
+  /**
    * Create a new game session
    */
   createSession(request: CreateGameSessionRequest): GameSession {
-    const sessionId = randomUUID();
+    const sessionId = this.generateSessionCode();
 
     const session: GameSession = {
       id: sessionId,
@@ -45,7 +70,8 @@ export class GameSessionService {
    * Get a session by ID
    */
   getSession(sessionId: string): GameSession | undefined {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session) return undefined;
 
     // Populate participants array with names
@@ -75,7 +101,8 @@ export class GameSessionService {
    * Add a participant to a session
    */
   addParticipant(sessionId: string, participantName: string, socketId: string): Participant | null {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session) {
       return null;
     }
@@ -145,7 +172,8 @@ export class GameSessionService {
    * Start the game
    */
   startGame(sessionId: string): GameRound | null {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session || session.songs.length === 0) {
       return null;
     }
@@ -154,14 +182,15 @@ export class GameSessionService {
     session.startedAt = new Date().toISOString();
 
     // Start first round
-    return this.startNextRound(sessionId);
+    return this.startNextRound(normalizedId);
   }
 
   /**
    * Start the next round
    */
   startNextRound(sessionId: string): GameRound | null {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session) {
       return null;
     }
@@ -170,7 +199,7 @@ export class GameSessionService {
 
     // Check if game is complete
     if (nextRoundIndex >= session.songs.length) {
-      this.endGame(sessionId);
+      this.endGame(normalizedId);
       return null;
     }
 
@@ -198,7 +227,8 @@ export class GameSessionService {
    * Handle buzzer press
    */
   handleBuzzerPress(sessionId: string, participantId: string): BuzzerEvent | null {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     const participant = this.participants.get(participantId);
 
     if (!session || !participant) {
@@ -256,7 +286,8 @@ export class GameSessionService {
    * Mark answer as correct and award points
    */
   markAnswerCorrect(sessionId: string, roundId: string, participantId: string): number {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session) {
       return 0;
     }
@@ -288,10 +319,47 @@ export class GameSessionService {
   }
 
   /**
+   * Mark answer as incorrect and deduct points
+   */
+  markAnswerIncorrect(sessionId: string, roundId: string, participantId: string): number {
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
+    if (!session) {
+      return 0;
+    }
+
+    const round = session.rounds.find(r => r.id === roundId);
+    if (!round) {
+      return 0;
+    }
+
+    const buzzerEvent = round.buzzerEvents.find(e => e.participantId === participantId);
+    if (!buzzerEvent) {
+      return 0;
+    }
+
+    // Calculate what the score would have been if correct
+    const potentialScore = calculateScore(buzzerEvent.elapsedSeconds);
+
+    // Calculate negative points based on percentage setting
+    const negativePercentage = session.settings.negativePointsPercentage || 25;
+    const negativePoints = -Math.round((potentialScore * negativePercentage) / 100);
+
+    buzzerEvent.score = negativePoints;
+    buzzerEvent.isCorrect = false;
+
+    // Update participant total score (deduct points)
+    session.scores[participantId] = (session.scores[participantId] || 0) + negativePoints;
+
+    return negativePoints;
+  }
+
+  /**
    * End the current round
    */
   endRound(sessionId: string, roundId: string): void {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session) {
       return;
     }
@@ -306,7 +374,8 @@ export class GameSessionService {
    * Pause the game
    */
   pauseGame(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (session) {
       session.status = 'paused';
     }
@@ -316,7 +385,8 @@ export class GameSessionService {
    * Resume the game
    */
   resumeGame(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (session) {
       session.status = 'playing';
     }
@@ -326,7 +396,8 @@ export class GameSessionService {
    * End the game
    */
   endGame(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (session) {
       session.status = 'ended';
       session.endedAt = new Date().toISOString();
@@ -337,14 +408,15 @@ export class GameSessionService {
    * Delete a session and all its participants
    */
   deleteSession(sessionId: string): void {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (session) {
       // Remove all participants
       session.participantIds.forEach(participantId => {
         this.participants.delete(participantId);
       });
 
-      this.sessions.delete(sessionId);
+      this.sessions.delete(normalizedId);
     }
   }
 
@@ -352,7 +424,8 @@ export class GameSessionService {
    * Get final scores for a session
    */
   getFinalScores(sessionId: string): Array<{ participantId: string; participantName: string; score: number }> {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session) {
       return [];
     }
@@ -373,7 +446,8 @@ export class GameSessionService {
    * Get current round for a session
    */
   getCurrentRound(sessionId: string): GameRound | undefined {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session || session.currentRoundIndex < 0) {
       return undefined;
     }
@@ -384,7 +458,8 @@ export class GameSessionService {
    * Restart game with same session ID and participants
    */
   restartGame(sessionId: string, songs: Song[]): GameSession | null {
-    const session = this.sessions.get(sessionId);
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
     if (!session) {
       return null;
     }

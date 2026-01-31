@@ -7,6 +7,7 @@ export interface GameSettings {
   songDuration: number; // Max duration to play each song (seconds)
   maxScore: number; // Maximum points per question (default: 60)
   randomStartOffset: boolean; // Whether to start songs at random positions
+  negativePointsPercentage: number; // Percentage of potential points to deduct for wrong answers (default: 25)
 }
 
 export interface GameRound {

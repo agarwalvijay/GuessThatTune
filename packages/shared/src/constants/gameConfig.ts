@@ -2,6 +2,7 @@ export const DEFAULT_GAME_SETTINGS = {
   songDuration: 30, // Play up to 30 seconds of each song
   maxScore: 60, // Maximum points per correct answer
   randomStartOffset: true, // Start songs at random positions
+  negativePointsPercentage: 25, // Deduct 25% of potential points for wrong answers
 } as const;
 
 export const SCORE_CALCULATION = {
