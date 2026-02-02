@@ -14,15 +14,14 @@ A multiplayer music quiz game where players compete to identify songs from Spoti
 ## Features
 
 ### Game Features
-- **Spotify Integration** - Use any Spotify playlist for your quiz
-- **Smart Playback Control** - Plays songs on your Spotify device (phone, tablet, computer, speaker)
+- **Spotify Integration** - Use any Spotify playlist for your quiz (Premium required)
+- **Browser-based Playback** - Music plays directly in your browser via Spotify Web Playback SDK
 - **Real-time Buzzer System** - Server-side timing prevents cheating
 - **Configurable Settings**:
   - Song duration (10-60 seconds)
   - Number of songs (5-30)
   - Buzzer countdown timer (1-10 seconds)
   - Wrong answer penalty (0-100%)
-  - Spotify device selection
 - **Dynamic Scoring** - Points based on speed: faster buzz = more points
 - **Negative Points** - Configurable penalty for wrong answers
 - **Sound Effects** - Buzz sounds, correct/incorrect feedback
@@ -89,7 +88,7 @@ SongGame/
 ## Prerequisites
 
 - Node.js 18+ and npm
-- **Spotify account** (Premium recommended for best experience)
+- **Spotify Premium account** (required for Web Playback SDK)
 - Spotify Developer App credentials ([Create one here](https://developer.spotify.com/dashboard))
 
 ## Setup Instructions
@@ -163,31 +162,27 @@ Access the apps:
 
 ### Quiz Master Setup
 
-1. **Prepare Spotify:**
-   - Open Spotify on your phone, tablet, or computer
-   - Play any song for 1-2 seconds (this activates your device)
-
-2. **Login:**
+1. **Login:**
    - Visit [hearandguess.com](https://hearandguess.com)
    - Click "Connect with Spotify"
-   - Authorize the app
+   - Authorize the app (Spotify Premium required)
 
-3. **Configure Settings (Optional):**
+2. **Configure Settings (Optional):**
    - Click the settings icon (⚙️)
    - Adjust song duration, number of songs, penalties, countdown timer
-   - Select which Spotify device to use for playback
 
-4. **Select Playlist:**
+3. **Select Playlist:**
    - Choose any of your Spotify playlists
    - The app will use available songs from that playlist
 
-5. **Share the Game:**
+4. **Share the Game:**
    - Show participants the QR code
    - Or share the session code (5 characters, e.g., "ABC12")
 
-6. **Start Playing:**
+5. **Start Playing:**
    - Wait for participants to join
    - Click "Start Game"
+   - Music plays directly from your browser
    - Control playback and award points
 
 ### For Participants
@@ -202,7 +197,7 @@ Access the apps:
 ### Gameplay Flow
 
 1. Quiz master starts each round
-2. A song plays from your selected Spotify device
+2. A song plays from the browser
 3. Participants buzz in when they recognize the song
 4. Countdown timer appears (configurable, default 3 seconds)
 5. Quiz master sees who buzzed and when
@@ -316,11 +311,12 @@ const score = Math.max(0, 60 - Math.floor(elapsedSeconds));
 
 ### Spotify Playback
 
-Uses Spotify Connect API (not Web Playback SDK):
-- Controls existing Spotify devices remotely
-- Works with phones, tablets, computers, speakers
-- Requires device to be "active" (play a song briefly first)
-- Device selection available in settings
+Uses Spotify Web Playback SDK:
+- Plays music directly in the browser tab
+- No external devices or apps needed
+- Requires Spotify Premium
+- Automatic player initialization on login
+- Browser becomes a virtual Spotify device
 
 ### Sound Effects
 
@@ -352,13 +348,13 @@ Visit [hearandguess.com/info](https://hearandguess.com/info) for:
 
 ## Troubleshooting
 
-### Spotify device not detected
+### Songs won't play
 
-1. Open Spotify app on your device
-2. Play any song for 1-2 seconds
-3. Return to Hear and Guess
-4. Go to Settings and select your device
-5. If device disappears, repeat steps 1-2
+- **Verify Spotify Premium is active** - Web Playback SDK requires Spotify Premium
+- **Refresh the page** - The player may need to reinitialize
+- **Check browser console** - Look for errors related to Spotify SDK
+- **Try a different browser** - Chrome and Firefox work best
+- **Check browser audio permissions** - Ensure the site can play audio
 
 ### Participants can't join
 
@@ -367,19 +363,18 @@ Visit [hearandguess.com/info](https://hearandguess.com/info) for:
 - Verify CORS settings include participant URL
 - Check Socket.io connection in browser console
 
-### Songs won't play
-
-- Verify Spotify Premium is active
-- Ensure Spotify app is open and has played recently
-- Check device selection in settings
-- Try transferring playback to your device manually in Spotify
-- Refresh the page and try again
-
 ### Wrong answers not penalized
 
 - Check that negative points percentage is > 0 in settings
 - Ensure you're clicking the ✗ button (not just skipping)
 - Verify score updates in the leaderboard
+
+### "Device not found" error
+
+- Wait 5-10 seconds after login for player to initialize
+- Refresh the page and try again
+- Confirm you have Spotify Premium (required)
+- Check browser console for SDK initialization errors
 
 ## Development Roadmap
 

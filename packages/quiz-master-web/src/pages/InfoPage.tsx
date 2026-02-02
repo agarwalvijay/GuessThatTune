@@ -25,20 +25,15 @@ export function InfoPage() {
           <h3 style={styles.subTitle}>Getting Started (Quiz Master)</h3>
           <ol style={styles.list}>
             <li style={styles.listItem}>
-              <strong>Prepare Spotify:</strong> Open Spotify on your phone, tablet, or computer and play any song for 1-2 seconds.
-              This activates your device so the game can control playback.
+              <strong>Login:</strong> Click "Login with Spotify" and authorize the app. Note: Spotify Premium is required for playback.
             </li>
             <li style={styles.listItem}>
-              <strong>Login:</strong> Click "Login with Spotify" and authorize the app to access your playlists and control playback.
-            </li>
-            <li style={styles.listItem}>
-              <strong>Configure Settings:</strong> Click the settings icon (⚙️) to adjust:
+              <strong>Configure Settings (Optional):</strong> Click the settings icon (⚙️) to adjust:
               <ul style={styles.subList}>
                 <li>Song duration (10-60 seconds)</li>
                 <li>Number of songs (5-30)</li>
                 <li>Wrong answer penalty (0-100%)</li>
                 <li>Buzzer countdown timer (1-10 seconds)</li>
-                <li>Spotify playback device</li>
               </ul>
             </li>
             <li style={styles.listItem}>
@@ -48,7 +43,7 @@ export function InfoPage() {
               <strong>Share the Game:</strong> Show participants the QR code or share the join link.
             </li>
             <li style={styles.listItem}>
-              <strong>Start Playing:</strong> Once everyone has joined, start the game and control playback from your screen.
+              <strong>Start Playing:</strong> Once everyone has joined, start the game. Music will play from your browser.
             </li>
           </ol>
 
