@@ -72,6 +72,7 @@ class SpotifyPlaybackService {
   private player: SpotifyPlayer | null = null;
   private deviceId: string | null = null;
   private sdkReady: boolean = false;
+  private maxInitializationAttempts: number = 3;
 
   /**
    * Initialize the playback service with access token
@@ -80,17 +81,52 @@ class SpotifyPlaybackService {
     this.accessToken = accessToken;
     console.log('🎵 Initializing Spotify Web Playback SDK...');
 
-    // If already initialized, just reconnect with new token
+    // If already initialized, disconnect first to start fresh
     if (this.player) {
-      console.log('♻️ Reconnecting existing player...');
-      return;
+      console.log('♻️ Disconnecting existing player to reinitialize...');
+      this.player.disconnect();
+      this.player = null;
+      this.deviceId = null;
     }
 
     // Wait for SDK to be ready
     await this.waitForSDK();
 
-    // Initialize the player
-    await this.initializePlayer();
+    // Initialize the player with retry logic
+    await this.initializePlayerWithRetry();
+  }
+
+  /**
+   * Initialize player with retry logic (up to 3 attempts)
+   */
+  private async initializePlayerWithRetry(): Promise<void> {
+    for (let attempt = 1; attempt <= this.maxInitializationAttempts; attempt++) {
+      console.log(`🔄 Device initialization attempt ${attempt}/${this.maxInitializationAttempts}`);
+
+      try {
+        await this.initializePlayer();
+        console.log(`✅ Device initialized successfully on attempt ${attempt}`);
+        return; // Success!
+      } catch (error) {
+        console.error(`❌ Initialization attempt ${attempt} failed:`, error);
+
+        // Clean up failed attempt
+        if (this.player) {
+          this.player.disconnect();
+          this.player = null;
+          this.deviceId = null;
+        }
+
+        // If this was the last attempt, throw
+        if (attempt === this.maxInitializationAttempts) {
+          throw new Error(`Failed to initialize Spotify player after ${this.maxInitializationAttempts} attempts. Please refresh the page and try again.`);
+        }
+
+        // Wait before next attempt
+        console.log(`⏳ Waiting 3 seconds before retry...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
   }
 
   /**
@@ -200,34 +236,49 @@ class SpotifyPlaybackService {
 
     console.log('🔍 Verifying device registration with Spotify...');
 
-    try {
-      // Check if our device appears in Spotify's device list
-      const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-        },
-      });
+    // Try verification twice
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+          },
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch devices from Spotify');
+        if (!response.ok) {
+          throw new Error('Failed to fetch devices from Spotify');
+        }
+
+        const data = await response.json();
+        const devices = data.devices || [];
+
+        console.log(`📱 Available devices (attempt ${attempt}/2):`, devices.map((d: any) => `${d.name} (${d.id.substring(0, 8)}...)`).join(', ') || 'none');
+
+        const ourDevice = devices.find((d: any) => d.id === this.deviceId);
+
+        if (ourDevice) {
+          console.log('✅ Device verified in Spotify backend:', ourDevice.name);
+          return; // Success!
+        } else {
+          console.warn(`⚠️ Device ${this.deviceId?.substring(0, 8)}... not found (attempt ${attempt}/2)`);
+
+          if (attempt === 1) {
+            console.log('⏳ Waiting 2 seconds before retrying verification...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            // Second attempt failed - throw error to trigger device recreation
+            throw new Error('Device not found in Spotify backend after 2 verification attempts');
+          }
+        }
+      } catch (error) {
+        if (attempt === 2) {
+          // Second attempt failed - rethrow to trigger device recreation
+          throw error;
+        }
+        console.warn(`⚠️ Verification attempt ${attempt} error:`, error);
+        console.log('⏳ Waiting 2 seconds before retrying verification...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
-
-      const data = await response.json();
-      const devices = data.devices || [];
-
-      console.log('📱 Available devices:', devices.map((d: any) => `${d.name} (${d.id})`).join(', '));
-
-      const ourDevice = devices.find((d: any) => d.id === this.deviceId);
-
-      if (ourDevice) {
-        console.log('✅ Device verified in Spotify backend:', ourDevice.name);
-      } else {
-        console.warn('⚠️ Device not yet visible in Spotify backend, but continuing anyway');
-        // Don't throw - sometimes it works even if not visible yet
-      }
-    } catch (error) {
-      console.warn('⚠️ Could not verify device registration:', error);
-      // Don't throw - we'll try to use it anyway
     }
   }
 
@@ -281,6 +332,39 @@ class SpotifyPlaybackService {
   }
 
   /**
+   * Transfer playback to this device (activate it)
+   */
+  private async transferPlayback(): Promise<void> {
+    if (!this.accessToken || !this.deviceId) {
+      return;
+    }
+
+    try {
+      console.log('🔄 Transferring playback to Web Player device...');
+      const response = await fetch('https://api.spotify.com/v1/me/player', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          device_ids: [this.deviceId],
+          play: false, // Don't start playing yet
+        }),
+      });
+
+      if (response.ok || response.status === 204) {
+        console.log('✅ Playback transferred to Web Player');
+      } else {
+        console.warn('⚠️ Could not transfer playback:', response.status);
+      }
+    } catch (error) {
+      console.warn('⚠️ Error transferring playback:', error);
+      // Don't throw - we'll try to play anyway
+    }
+  }
+
+  /**
    * Play a song on the Web Player
    */
   async playSong(trackUri: string, startPositionMs: number = 0, retryCount: number = 0): Promise<void> {
@@ -293,9 +377,16 @@ class SpotifyPlaybackService {
     }
 
     try {
-      console.log('🎵 Playing track:', trackUri);
+      // Transfer playback to our device first (activate it)
+      if (retryCount === 0) {
+        await this.transferPlayback();
+        // Wait a moment for transfer to take effect
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      console.log(`🎵 Playing track (attempt ${retryCount + 1}/2):`, trackUri);
       console.log('📊 Start position:', Math.floor(startPositionMs / 1000), 'seconds');
-      console.log('🎧 Device ID:', this.deviceId);
+      console.log('🎧 Device ID:', this.deviceId?.substring(0, 8) + '...');
 
       // Use Spotify Connect API to start playback on our Web Player device
       const response = await fetch(
@@ -324,10 +415,14 @@ class SpotifyPlaybackService {
           return this.playSong(trackUri, startPositionMs, retryCount + 1);
         }
 
-        // Provide better error messages
-        if (response.status === 404) {
-          throw new Error('Spotify player device not found. This usually means:\n\n1. You need Spotify Premium (required for playback)\n2. The player may need a moment to activate - please refresh and try again\n3. Make sure no other Spotify session is playing\n\nIf the problem persists, please check that you have an active Spotify Premium subscription.');
-        } else if (response.status === 403) {
+        // After 2 failures, trigger device recreation
+        if (response.status === 404 && retryCount === 1) {
+          console.error('❌ Device still not found after retry. Triggering device recreation...');
+          throw new Error('DEVICE_NOT_FOUND_REINIT'); // Special error to trigger reinitialization
+        }
+
+        // Provide better error messages for other errors
+        if (response.status === 403) {
           throw new Error('Spotify Premium required. The Web Playback SDK only works with Spotify Premium accounts.');
         } else {
           throw new Error(`Failed to start playback: ${error.error?.message || error.error?.reason || 'Unknown error'}`);
