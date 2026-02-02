@@ -191,10 +191,10 @@ export function InfoPage() {
         {/* Copyright & License */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Copyright & License</h2>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             Copyright © 2026 hearandguess.com. All rights reserved.
           </p>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             This software is proprietary. Unauthorized use, copying, or distribution is prohibited.
             For licensing inquiries, please contact{' '}
             <a href="mailto:kj3yihkvm@mozmail.com" style={styles.link}>
@@ -286,7 +286,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '16px',
   },
   legalText: {
-    fontSize: '14px',
+    fontSize: '12px',
     lineHeight: '1.4',
     color: '#666',
     marginBottom: '8px',
@@ -302,13 +302,13 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '12px',
   },
   legalListItem: {
-    fontSize: '14px',
+    fontSize: '12px',
     lineHeight: '1.4',
     color: '#666',
     marginBottom: '6px',
   },
   legalSubTitle: {
-    fontSize: '20px',
+    fontSize: '16px',
     fontWeight: '600',
     color: '#555',
     marginTop: '12px',
