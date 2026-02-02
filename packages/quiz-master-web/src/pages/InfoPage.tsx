@@ -182,8 +182,8 @@ export function InfoPage() {
 
           <h3 style={styles.subTitle}>Contact</h3>
           <p style={styles.text}>
-            Questions about these terms? Contact us at: <a href="mailto:vijay@theagarwals.com" style={styles.link}>
-              vijay@theagarwals.com
+            Questions about these terms? Contact us at: <a href="mailto:kj3yihkvm@mozmail.com" style={styles.link}>
+              kj3yihkvm@mozmail.com
             </a>
           </p>
         </section>
