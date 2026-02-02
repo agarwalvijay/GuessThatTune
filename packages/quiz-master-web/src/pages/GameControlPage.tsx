@@ -511,9 +511,8 @@ export function GameControlPage() {
     }
 
     try {
-      // Stop playback and disconnect player before ending the game
+      // Stop playback (keep player connected for next game)
       await spotifyPlaybackService.pause();
-      spotifyPlaybackService.disconnect();
       const result = await apiService.endGameSession(gameSession.id);
       // Update session state to 'ended' before navigating
       if (result && result.session) {

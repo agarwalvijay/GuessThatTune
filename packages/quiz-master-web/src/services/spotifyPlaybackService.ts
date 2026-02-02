@@ -79,19 +79,14 @@ class SpotifyPlaybackService {
    */
   async initialize(accessToken: string): Promise<void> {
     this.accessToken = accessToken;
-    console.log('🎵 Initializing Spotify Web Playback SDK...');
 
-    // If already initialized, disconnect first to start fresh
-    if (this.player) {
-      console.log('♻️ Disconnecting existing player to reinitialize...');
-      this.player.disconnect();
-      this.player = null;
-      this.deviceId = null;
-
-      // CRITICAL: Wait for disconnect to propagate to Spotify's backend
-      console.log('⏳ Waiting for disconnect to complete...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    // If player already exists and is ready, reuse it (fast path)
+    if (this.player && this.deviceId) {
+      console.log('♻️ Reusing existing player:', this.deviceId.substring(0, 8) + '...');
+      return;
     }
+
+    console.log('🎵 Initializing Spotify Web Playback SDK...');
 
     // Wait for SDK to be ready
     await this.waitForSDK();
@@ -419,10 +414,11 @@ class SpotifyPlaybackService {
           return this.playSong(trackUri, startPositionMs, retryCount + 1);
         }
 
-        // After 2 failures, trigger device recreation
+        // After 2 failures, reset player and suggest retry
         if (response.status === 404 && retryCount === 1) {
-          console.error('❌ Device still not found after retry. Triggering device recreation...');
-          throw new Error('DEVICE_NOT_FOUND_REINIT'); // Special error to trigger reinitialization
+          console.error('❌ Device still not found after retry. Resetting player...');
+          this.reset(); // Clear player so next initialize() will recreate
+          throw new Error('Spotify player device not working. Please try starting the round again - a new device will be created automatically.');
         }
 
         // Provide better error messages for other errors
@@ -504,6 +500,18 @@ class SpotifyPlaybackService {
       console.error('❌ Error getting playback state:', error);
       return null;
     }
+  }
+
+  /**
+   * Reset the player (force recreation on next initialize)
+   */
+  reset(): void {
+    console.log('🔄 Resetting player for recreation...');
+    if (this.player) {
+      this.player.disconnect();
+    }
+    this.player = null;
+    this.deviceId = null;
   }
 
   /**
