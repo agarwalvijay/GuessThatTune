@@ -71,10 +71,10 @@ export function InfoPage() {
         {/* Privacy Policy */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Privacy Policy</h2>
-          <p style={styles.text}><em>Last updated: February 2, 2026</em></p>
+          <p style={styles.legalText}><em>Last updated: February 2, 2026</em></p>
 
           <h3 style={styles.subTitle}>Information We Collect</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             When you use Hear and Guess, we collect:
           </p>
           <ul style={styles.list}>
@@ -100,13 +100,13 @@ export function InfoPage() {
           </ul>
 
           <h3 style={styles.subTitle}>Data Storage and Security</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             Game sessions are stored temporarily on our servers and are automatically deleted after completion.
             We do not permanently store your Spotify credentials - you authenticate directly with Spotify using OAuth.
           </p>
 
           <h3 style={styles.subTitle}>Third-Party Services</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             We use the following third-party services:
           </p>
           <ul style={styles.list}>
@@ -125,7 +125,7 @@ export function InfoPage() {
           </ul>
 
           <h3 style={styles.subTitle}>Your Rights</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             You can revoke the app's access to your Spotify account at any time through your
             <a href="https://www.spotify.com/account/apps/" target="_blank" rel="noopener noreferrer" style={styles.link}>
               {' '}Spotify account settings
@@ -136,27 +136,27 @@ export function InfoPage() {
         {/* Terms of Service */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Terms of Service</h2>
-          <p style={styles.text}><em>Last updated: February 2, 2026</em></p>
+          <p style={styles.legalText}><em>Last updated: February 2, 2026</em></p>
 
           <h3 style={styles.subTitle}>Acceptance of Terms</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             By using Hear and Guess, you agree to these Terms of Service. If you don't agree, please don't use the app.
           </p>
 
           <h3 style={styles.subTitle}>Service Description</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             Hear and Guess is a music quiz game that uses your Spotify account to play songs from your playlists.
             The service is provided free of charge for personal, non-commercial use.
           </p>
 
           <h3 style={styles.subTitle}>Spotify Requirements</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             You must have a Spotify account to use this app. Spotify Premium is recommended for the best experience,
             as free accounts have limitations on playback control.
           </p>
 
           <h3 style={styles.subTitle}>Acceptable Use</h3>
-          <p style={styles.text}>You agree to:</p>
+          <p style={styles.legalText}>You agree to:</p>
           <ul style={styles.list}>
             <li style={styles.listItem}>Use the app only for lawful purposes</li>
             <li style={styles.listItem}>Not attempt to hack, reverse engineer, or compromise the service</li>
@@ -165,7 +165,7 @@ export function InfoPage() {
           </ul>
 
           <h3 style={styles.subTitle}>Disclaimer</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             Hear and Guess is provided "as is" without warranties of any kind. We are not responsible for:
           </p>
           <ul style={styles.list}>
@@ -176,13 +176,28 @@ export function InfoPage() {
           </ul>
 
           <h3 style={styles.subTitle}>Changes to Terms</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             We may update these terms at any time. Continued use of the app constitutes acceptance of any changes.
           </p>
 
           <h3 style={styles.subTitle}>Contact</h3>
-          <p style={styles.text}>
+          <p style={styles.legalText}>
             Questions about these terms? Contact us at: <a href="mailto:kj3yihkvm@mozmail.com" style={styles.link}>
+              kj3yihkvm@mozmail.com
+            </a>
+          </p>
+        </section>
+
+        {/* Copyright & License */}
+        <section style={styles.section}>
+          <h2 style={styles.sectionTitle}>Copyright & License</h2>
+          <p style={styles.text}>
+            Copyright © 2026 hearandguess.com. All rights reserved.
+          </p>
+          <p style={styles.text}>
+            This software is proprietary. Unauthorized use, copying, or distribution is prohibited.
+            For licensing inquiries, please contact{' '}
+            <a href="mailto:kj3yihkvm@mozmail.com" style={styles.link}>
               kj3yihkvm@mozmail.com
             </a>
           </p>
@@ -191,12 +206,10 @@ export function InfoPage() {
         {/* Footer */}
         <div style={styles.footer}>
           <p style={styles.footerText}>
-            Hear and Guess &copy; 2026. Not affiliated with Spotify.
+            Hear and Guess &copy; 2026 hearandguess.com. All rights reserved.
           </p>
           <p style={styles.footerText}>
-            <a href="https://github.com/agarwalvijay/GuessThatTune" target="_blank" rel="noopener noreferrer" style={styles.link}>
-              Open Source on GitHub
-            </a>
+            Not affiliated with Spotify.
           </p>
         </div>
       </div>
@@ -271,6 +284,12 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: '1.6',
     color: '#666',
     marginBottom: '16px',
+  },
+  legalText: {
+    fontSize: '14px',
+    lineHeight: '1.6',
+    color: '#666',
+    marginBottom: '14px',
   },
   list: {
     marginLeft: '20px',

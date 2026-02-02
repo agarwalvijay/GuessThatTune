@@ -417,7 +417,7 @@ Suggestions and bug reports are welcome! For contributions, please contact us fi
 
 ## Copyright
 
-Copyright © 2026 Vijay Agarwal. All rights reserved.
+Copyright © 2026 hearandguess.com. All rights reserved.
 
 This software is proprietary. For licensing inquiries, please contact [kj3yihkvm@mozmail.com](mailto:kj3yihkvm@mozmail.com)
 
