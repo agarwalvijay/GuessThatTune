@@ -125,11 +125,11 @@ export function PlaylistSelectionPage() {
           <h1 style={styles.title}>Select a Playlist</h1>
         </div>
         <div style={styles.headerRight}>
-          <button onClick={handleOpenSettings} style={styles.settingsButton}>
-            ⚙️ Settings
+          <button onClick={handleOpenSettings} style={styles.settingsButton} title="Settings">
+            ⚙️
           </button>
-          <button onClick={handleLogout} style={styles.logoutButton}>
-            Logout
+          <button onClick={handleLogout} style={styles.logoutButton} title="Logout">
+            🚪
           </button>
         </div>
       </div>
@@ -352,21 +352,29 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     color: 'white',
     border: '1px solid white',
-    borderRadius: '20px',
-    padding: '10px 20px',
-    fontSize: '14px',
+    borderRadius: '50%',
+    width: '44px',
+    height: '44px',
+    fontSize: '20px',
     cursor: 'pointer',
     transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoutButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     color: 'white',
     border: '1px solid white',
-    borderRadius: '20px',
-    padding: '10px 20px',
-    fontSize: '14px',
+    borderRadius: '50%',
+    width: '44px',
+    height: '44px',
+    fontSize: '20px',
     cursor: 'pointer',
     transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     position: 'fixed',

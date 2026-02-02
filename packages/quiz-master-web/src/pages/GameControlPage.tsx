@@ -8,6 +8,7 @@ import { spotifyPlaybackService } from '../services/spotifyPlaybackService';
 import { config } from '../config/environment';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { playBuzzSound, playCorrectSound, playIncorrectSound, playBeepSound } from '../utils/soundEffects';
+import { analyticsService } from '../services/analyticsService';
 import type { Song } from '../store/appStore';
 
 interface RoundData {
@@ -522,6 +523,14 @@ export function GameControlPage() {
       if (result && result.session) {
         console.log('Updating session status to:', result.session.status);
         setGameSession(result.session);
+
+        // Track game ended
+        analyticsService.trackGameEnded({
+          sessionId: gameSession.id,
+          numberOfParticipants: gameSession.participants?.length || 0,
+          numberOfSongs: gameSession.settings.numberOfSongs,
+          completedSongs: gameSession.currentRoundIndex + 1,
+        });
       }
       // Navigate to results page to show final scores
       navigate('/results');

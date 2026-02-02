@@ -6,6 +6,7 @@ import { apiService } from '../services/apiService';
 import { socketService } from '../services/socketService';
 import { config } from '../config/environment';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { analyticsService } from '../services/analyticsService';
 
 export function GameSetupPage() {
   const navigate = useNavigate();
@@ -66,7 +67,17 @@ export function GameSetupPage() {
     // Set up listeners
     socketService.onParticipantJoined((participant) => {
       console.log('Participant joined:', participant);
-      setParticipants((prev) => [...prev, participant]);
+      setParticipants((prev) => {
+        const updated = [...prev, participant];
+        // Track participant join
+        if (gameSession?.id) {
+          analyticsService.trackParticipantJoined({
+            sessionId: gameSession.id,
+            totalParticipants: updated.length,
+          });
+        }
+        return updated;
+      });
     });
 
     socketService.onParticipantLeft((participantId) => {
@@ -144,6 +155,14 @@ export function GameSetupPage() {
       }
 
       setGameSession(session);
+
+      // Track game creation in analytics
+      analyticsService.trackGameCreated({
+        numberOfSongs: Math.min(numberOfSongs, shuffledSongs.length),
+        songDuration,
+        negativePointsPercentage,
+        buzzerCountdownSeconds: gameSettings.buzzerCountdownSeconds,
+      });
     } catch (err: any) {
       console.error('Error creating game session:', err);
       setError('Failed to create game session. Please try again.');
@@ -157,6 +176,14 @@ export function GameSetupPage() {
 
     try {
       await apiService.startGameSession(gameSession.id);
+
+      // Track game started
+      analyticsService.trackGameStarted({
+        sessionId: gameSession.id,
+        numberOfParticipants: participants.length,
+        numberOfSongs: gameSession.settings.numberOfSongs,
+      });
+
       navigate('/game-control');
     } catch (err) {
       console.error('Error starting game:', err);
