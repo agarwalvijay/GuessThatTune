@@ -137,13 +137,45 @@ class SpotifyPlaybackService {
     // Set up event listeners
     this.setupPlayerListeners();
 
-    // Connect to Spotify
+    // Connect to Spotify and wait for ready event
     const connected = await this.player.connect();
-    if (connected) {
-      console.log('✅ Spotify Web Player connected successfully');
-    } else {
+    if (!connected) {
       throw new Error('Failed to connect Spotify Web Player');
     }
+
+    console.log('✅ Spotify Web Player connected, waiting for device registration...');
+
+    // Wait for the device to be ready (ready event to fire)
+    await this.waitForDeviceReady();
+  }
+
+  /**
+   * Wait for device to be registered and ready
+   */
+  private waitForDeviceReady(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // If already ready, resolve immediately
+      if (this.deviceId) {
+        console.log('✅ Device already ready:', this.deviceId);
+        resolve();
+        return;
+      }
+
+      // Set a timeout in case the ready event never fires
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout waiting for Spotify player to be ready. Please ensure you have Spotify Premium.'));
+      }, 10000); // 10 second timeout
+
+      // Wait for ready event
+      const checkReady = setInterval(() => {
+        if (this.deviceId) {
+          clearInterval(checkReady);
+          clearTimeout(timeout);
+          console.log('✅ Device ready:', this.deviceId);
+          resolve();
+        }
+      }, 100);
+    });
   }
 
   /**
@@ -199,13 +231,18 @@ class SpotifyPlaybackService {
    * Play a song on the Web Player
    */
   async playSong(trackUri: string, startPositionMs: number = 0): Promise<void> {
-    if (!this.accessToken || !this.deviceId) {
-      throw new Error('Player not initialized');
+    if (!this.accessToken) {
+      throw new Error('No access token available. Please log in again.');
+    }
+
+    if (!this.deviceId) {
+      throw new Error('Spotify Web Player not ready. Please refresh the page and try again.');
     }
 
     try {
       console.log('🎵 Playing track:', trackUri);
       console.log('📊 Start position:', Math.floor(startPositionMs / 1000), 'seconds');
+      console.log('🎧 Device ID:', this.deviceId);
 
       // Use Spotify Connect API to start playback on our Web Player device
       const response = await fetch(
@@ -226,7 +263,15 @@ class SpotifyPlaybackService {
       if (!response.ok) {
         const error = await response.json();
         console.error('❌ Playback error:', error);
-        throw new Error(`Failed to start playback: ${error.error?.message || 'Unknown error'}`);
+
+        // Provide better error messages
+        if (response.status === 404) {
+          throw new Error('Spotify player device not found. This usually means:\n\n1. You need Spotify Premium (required for playback)\n2. The player may need a moment to activate - please wait and try again\n3. Try refreshing the page\n\nIf the problem persists, please check that you have an active Spotify Premium subscription.');
+        } else if (response.status === 403) {
+          throw new Error('Spotify Premium required. The Web Playback SDK only works with Spotify Premium accounts.');
+        } else {
+          throw new Error(`Failed to start playback: ${error.error?.message || error.error?.reason || 'Unknown error'}`);
+        }
       }
 
       console.log('✅ Playback started');
