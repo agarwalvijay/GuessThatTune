@@ -78,15 +78,15 @@ export function InfoPage() {
             When you use Hear and Guess, we collect:
           </p>
           <ul style={styles.list}>
-            <li style={styles.listItem}>
+            <li style={styles.legalListItem}>
               <strong>Spotify Account Information:</strong> We access your Spotify user ID, email, and playlists
               to allow you to select music for games.
             </li>
-            <li style={styles.listItem}>
+            <li style={styles.legalListItem}>
               <strong>Game Data:</strong> We temporarily store game sessions, participant names, and scores
               while games are in progress.
             </li>
-            <li style={styles.listItem}>
+            <li style={styles.legalListItem}>
               <strong>Analytics:</strong> We use Google Analytics to understand how people use the app,
               including page views and game events (games created, started, ended).
             </li>
@@ -94,9 +94,9 @@ export function InfoPage() {
 
           <h3 style={styles.subTitle}>How We Use Your Information</h3>
           <ul style={styles.list}>
-            <li style={styles.listItem}>To provide the game functionality (access playlists, control Spotify playback)</li>
-            <li style={styles.listItem}>To manage game sessions and track scores</li>
-            <li style={styles.listItem}>To improve the app based on usage patterns</li>
+            <li style={styles.legalListItem}>To provide the game functionality (access playlists, control Spotify playback)</li>
+            <li style={styles.legalListItem}>To manage game sessions and track scores</li>
+            <li style={styles.legalListItem}>To improve the app based on usage patterns</li>
           </ul>
 
           <h3 style={styles.subTitle}>Data Storage and Security</h3>
@@ -110,13 +110,13 @@ export function InfoPage() {
             We use the following third-party services:
           </p>
           <ul style={styles.list}>
-            <li style={styles.listItem}>
+            <li style={styles.legalListItem}>
               <strong>Spotify:</strong> For authentication and music playback control.
               See <a href="https://www.spotify.com/privacy" target="_blank" rel="noopener noreferrer" style={styles.link}>
                 Spotify's Privacy Policy
               </a>.
             </li>
-            <li style={styles.listItem}>
+            <li style={styles.legalListItem}>
               <strong>Google Analytics:</strong> For usage analytics.
               See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={styles.link}>
                 Google's Privacy Policy
@@ -158,10 +158,10 @@ export function InfoPage() {
           <h3 style={styles.subTitle}>Acceptable Use</h3>
           <p style={styles.legalText}>You agree to:</p>
           <ul style={styles.list}>
-            <li style={styles.listItem}>Use the app only for lawful purposes</li>
-            <li style={styles.listItem}>Not attempt to hack, reverse engineer, or compromise the service</li>
-            <li style={styles.listItem}>Not use the app to infringe on music copyrights (all music is played through Spotify)</li>
-            <li style={styles.listItem}>Respect other players and not use offensive language or names</li>
+            <li style={styles.legalListItem}>Use the app only for lawful purposes</li>
+            <li style={styles.legalListItem}>Not attempt to hack, reverse engineer, or compromise the service</li>
+            <li style={styles.legalListItem}>Not use the app to infringe on music copyrights (all music is played through Spotify)</li>
+            <li style={styles.legalListItem}>Respect other players and not use offensive language or names</li>
           </ul>
 
           <h3 style={styles.subTitle}>Disclaimer</h3>
@@ -169,10 +169,10 @@ export function InfoPage() {
             Hear and Guess is provided "as is" without warranties of any kind. We are not responsible for:
           </p>
           <ul style={styles.list}>
-            <li style={styles.listItem}>Interruptions in service or Spotify playback</li>
-            <li style={styles.listItem}>Loss of game data or scores</li>
-            <li style={styles.listItem}>Issues with your Spotify account</li>
-            <li style={styles.listItem}>Any damages resulting from use of the app</li>
+            <li style={styles.legalListItem}>Interruptions in service or Spotify playback</li>
+            <li style={styles.legalListItem}>Loss of game data or scores</li>
+            <li style={styles.legalListItem}>Issues with your Spotify account</li>
+            <li style={styles.legalListItem}>Any damages resulting from use of the app</li>
           </ul>
 
           <h3 style={styles.subTitle}>Changes to Terms</h3>
@@ -300,6 +300,12 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: '1.8',
     color: '#666',
     marginBottom: '12px',
+  },
+  legalListItem: {
+    fontSize: '14px',
+    lineHeight: '1.6',
+    color: '#666',
+    marginBottom: '10px',
   },
   subList: {
     marginLeft: '20px',
