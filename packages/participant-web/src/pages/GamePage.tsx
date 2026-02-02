@@ -66,7 +66,7 @@ export function GamePage() {
         {/* Header */}
         <div className="game-header">
           <div className="player-info">
-            <img src="/logo.png" alt="Guess That Tune!" className="game-logo" />
+            <img src="/logo.png" alt="Hear and Guess" className="game-logo" />
             <div className="player-details">
               <p className="player-name">{participantName}</p>
               <p className="player-score">{myScore} points</p>

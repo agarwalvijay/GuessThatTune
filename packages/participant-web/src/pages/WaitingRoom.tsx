@@ -33,7 +33,7 @@ export function WaitingRoom() {
   return (
     <div className="waiting-room">
       <div className="waiting-container">
-        <img src="/logo.png" alt="Guess That Tune!" className="app-logo" />
+        <img src="/logo.png" alt="Hear and Guess" className="app-logo" />
         <h2 className="waiting-subtitle">Waiting for Game to Start</h2>
 
         <div className="participant-info">

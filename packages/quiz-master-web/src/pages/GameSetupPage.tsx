@@ -225,7 +225,7 @@ export function GameSetupPage() {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <img src="/logo.png" alt="Guess That Tune!" style={styles.logo} />
+        <img src="/logo.png" alt="Hear and Guess" style={styles.logo} />
         <h1 style={styles.title}>Waiting for Players</h1>
         <p style={styles.subtitle}>
           Playlist: <strong>{selectedPlaylist?.name}</strong>

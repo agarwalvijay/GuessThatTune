@@ -46,18 +46,24 @@ export function SpotifyLoginPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <img src="/logo.png" alt="Guess That Tune!" style={styles.logo} />
-        <h1 style={styles.title}>Guess That Tune!</h1>
+        <img src="/logo.png" alt="Hear and Guess" style={styles.logo} />
+        <h1 style={styles.title}>Hear and Guess</h1>
         <p style={styles.subtitle}>Quiz Master</p>
 
         <div style={styles.content}>
           <p style={styles.description}>
-            Welcome to Guess That Tune! Connect your Spotify account to create and host music quiz games.
+            Welcome to Hear and Guess Connect your Spotify account to create and host music quiz games.
           </p>
 
           <button onClick={handleLogin} style={styles.button}>
             Connect with Spotify
           </button>
+
+          <p style={styles.infoLink}>
+            <a href="/info" style={styles.link}>
+              How to Play • Privacy • Terms
+            </a>
+          </p>
         </div>
       </div>
     </div>
@@ -121,5 +127,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 'bold',
     cursor: 'pointer',
     transition: 'all 0.2s',
+  },
+  infoLink: {
+    textAlign: 'center' as const,
+    margin: 0,
+  },
+  link: {
+    color: '#667eea',
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: '500',
   },
 };

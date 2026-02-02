@@ -121,7 +121,7 @@ export function PlaylistSelectionPage() {
     <div style={styles.container}>
       <div style={styles.header}>
         <div style={styles.headerLeft}>
-          <img src="/logo.png" alt="Guess That Tune!" style={styles.logo} />
+          <img src="/logo.png" alt="Hear and Guess" style={styles.logo} />
           <h1 style={styles.title}>Select a Playlist</h1>
         </div>
         <div style={styles.headerRight}>

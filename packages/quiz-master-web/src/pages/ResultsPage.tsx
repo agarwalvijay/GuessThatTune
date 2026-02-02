@@ -52,7 +52,7 @@ export function ResultsPage() {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <h1 style={styles.appTitle}>Guess That Tune!</h1>
+        <h1 style={styles.appTitle}>Hear and Guess</h1>
 
         {/* Header with Winner */}
         <div style={styles.header}>

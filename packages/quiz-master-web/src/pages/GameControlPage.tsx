@@ -601,8 +601,8 @@ export function GameControlPage() {
       <div style={styles.container}>
       <div style={styles.content}>
         <div style={styles.header}>
-          <img src="/logo.png" alt="Guess That Tune!" style={styles.headerLogo} />
-          <h1 style={styles.appTitle}>Guess That Tune!</h1>
+          <img src="/logo.png" alt="Hear and Guess" style={styles.headerLogo} />
+          <h1 style={styles.appTitle}>Hear and Guess</h1>
         </div>
 
         {/* Two Column Layout: Buzzer Events & Scores */}

@@ -5,6 +5,7 @@ import { PlaylistSelectionPage } from './pages/PlaylistSelectionPage';
 import { GameSetupPage } from './pages/GameSetupPage';
 import { GameControlPage } from './pages/GameControlPage';
 import { ResultsPage } from './pages/ResultsPage';
+import { InfoPage } from './pages/InfoPage';
 import { analyticsService } from './services/analyticsService';
 
 function AnalyticsTracker() {
@@ -28,6 +29,7 @@ function App() {
       <Routes>
         <Route path="/" element={<SpotifyLoginPage />} />
         <Route path="/callback" element={<SpotifyLoginPage />} />
+        <Route path="/info" element={<InfoPage />} />
         <Route path="/playlists" element={<PlaylistSelectionPage />} />
         <Route path="/game-setup" element={<GameSetupPage />} />
         <Route path="/game-control" element={<GameControlPage />} />
