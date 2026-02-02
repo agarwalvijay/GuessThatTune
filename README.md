@@ -1,25 +1,46 @@
-# Song Quiz Game
+# Hear and Guess 🎵👂
 
-A multi-player music quiz game where a quiz master manages the game on a TV display while participants join via their phones to compete in identifying songs.
+A multiplayer music quiz game where players compete to identify songs from Spotify playlists. The quiz master controls the game while participants join via their phones to buzz in with answers.
+
+**Live at:** [hearandguess.com](https://hearandguess.com) | [songgame.theagarwals.com](https://songgame.theagarwals.com)
 
 ## Overview
 
-- **Quiz Master App**: React Native (Expo) app for Android/iOS that manages the game, plays music, and tracks scores
-- **Participant Web App**: React web app that participants use to join and play (buzzer button)
+- **Quiz Master Web App**: React web app for managing the game, controlling Spotify playback, and tracking scores
+- **Participant Web App**: React web app for participants to join, buzz in, and view scores
 - **Backend**: Node.js + Express + Socket.io server for real-time communication and game state management
+- **Shared Package**: TypeScript types, constants, and utilities used across all apps
 
 ## Features
 
-- **Spotify Integration** - Connect with Spotify Premium to use your playlists
-- Browse and select songs from your Spotify playlists
-- Automatic metadata from Spotify API (title, artist, album, artwork)
-- QR code generation for easy participant joining
-- Real-time buzzer system with server-side timing
-- Scoring formula: 60 - seconds_elapsed
-- Random song start points to increase difficulty
-- Live leaderboard and score tracking
-- Supports 50+ simultaneous participants
-- Session-based authentication (only quiz master needs Spotify)
+### Game Features
+- **Spotify Integration** - Use any Spotify playlist for your quiz
+- **Smart Playback Control** - Plays songs on your Spotify device (phone, tablet, computer, speaker)
+- **Real-time Buzzer System** - Server-side timing prevents cheating
+- **Configurable Settings**:
+  - Song duration (10-60 seconds)
+  - Number of songs (5-30)
+  - Buzzer countdown timer (1-10 seconds)
+  - Wrong answer penalty (0-100%)
+  - Spotify device selection
+- **Dynamic Scoring** - Points based on speed: faster buzz = more points
+- **Negative Points** - Configurable penalty for wrong answers
+- **Sound Effects** - Buzz sounds, correct/incorrect feedback
+- **Haptic Feedback** - Vibration on buzz (mobile devices)
+- **Album Artwork** - Display album art when revealing answers
+- **QR Code Joining** - Easy participant access via QR code
+- **Manual Session Codes** - 5-character codes for joining (e.g., ABC12)
+- **Auto-pause** - Playback pauses when someone buzzes in
+- **Session Restart** - Keep the same players for multiple games
+
+### Technical Features
+- **Google Analytics** - Track games played, participants, and usage patterns
+- **Multiple Domains** - Works on hearandguess.com and songgame.theagarwals.com
+- **SSL/HTTPS** - Secure connections with Let's Encrypt certificates
+- **WebSocket Support** - Real-time updates via Socket.io
+- **Responsive Design** - Works on desktop, tablet, and mobile
+- **Server-side Timing** - Prevents client-side cheating
+- **Cross-domain Tracking** - Analytics across both domains
 
 ## Project Structure
 
@@ -29,20 +50,28 @@ SongGame/
 │   ├── backend/              # Node.js + Express + Socket.io server
 │   │   ├── src/
 │   │   │   ├── config/       # Environment configuration
-│   │   │   ├── controllers/  # Business logic (future)
-│   │   │   ├── routes/       # API routes
-│   │   │   ├── services/     # Game session & music services
+│   │   │   ├── routes/       # API routes (game, health)
+│   │   │   ├── services/     # Game session management
 │   │   │   ├── socket/       # Socket.io event handlers
-│   │   │   ├── utils/        # QR code generation, etc.
 │   │   │   └── server.ts     # Main server file
 │   │   └── package.json
 │   │
-│   ├── quiz-master/          # React Native (Expo) quiz master app
-│   │   ├── App.tsx           # Main app component
+│   ├── quiz-master-web/      # React web app for quiz master
+│   │   ├── src/
+│   │   │   ├── config/       # Environment config, Spotify setup
+│   │   │   ├── pages/        # Login, Playlists, Setup, Control, Results, Info
+│   │   │   ├── services/     # API, Socket.io, Spotify, Analytics
+│   │   │   ├── store/        # Zustand state management
+│   │   │   └── utils/        # Sound effects, hooks
+│   │   ├── public/           # Static assets (logo)
 │   │   └── package.json
 │   │
 │   ├── participant-web/      # React web app for participants
 │   │   ├── src/
+│   │   │   ├── pages/        # Join, Waiting, Game, Results
+│   │   │   ├── services/     # Socket.io, Analytics
+│   │   │   ├── store/        # Zustand state management
+│   │   │   └── utils/        # Sound effects
 │   │   └── package.json
 │   │
 │   └── shared/               # Shared TypeScript types & constants
@@ -52,64 +81,52 @@ SongGame/
 │       │   └── utils/        # Scoring, validation
 │       └── package.json
 │
+├── ecosystem.config.js       # PM2 configuration for production
 ├── package.json              # Root workspace configuration
-└── tsconfig.json             # Base TypeScript config
+└── README.md                 # This file
 ```
 
 ## Prerequisites
 
 - Node.js 18+ and npm
-- Android device or emulator for Quiz Master app
-- **Spotify Premium account** (for quiz master)
-- Spotify Developer App credentials ([Setup Guide](./SPOTIFY_SETUP.md))
+- **Spotify account** (Premium recommended for best experience)
+- Spotify Developer App credentials ([Create one here](https://developer.spotify.com/dashboard))
 
 ## Setup Instructions
 
 ### 1. Install Dependencies
 
 ```bash
-# Install root dependencies and all workspace dependencies
+# Install all workspace dependencies
 npm install
-
-# If using workspaces doesn't work, install individually:
-cd packages/shared && npm install
-cd ../backend && npm install
-cd ../quiz-master && npm install
-cd ../participant-web && npm install
 ```
 
-### 2. Set Up Spotify (Optional - for now)
+### 2. Configure Spotify App
 
-The backend is ready to work with Spotify! Authentication happens in the Quiz Master app (to be implemented).
-
-See [Spotify Setup Guide](./SPOTIFY_SETUP.md) for details on:
-- Creating a Spotify Developer App (needed for Quiz Master app)
-- How the authentication flow works
-- No backend configuration required!
+1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Create a new app
+3. Add redirect URIs:
+   - `http://localhost:5173/callback` (for local development)
+   - `https://hearandguess.com/callback` (for production)
+   - `https://www.hearandguess.com/callback` (for production)
+4. Note your Client ID and Client Secret
 
 ### 3. Configure Environment Variables
 
 **Backend** (`packages/backend/.env`):
 ```env
-PORT=3000
-NODE_ENV=development
-CORS_ORIGIN=http://localhost:5173
-WEB_APP_URL=http://192.168.1.100:5173  # Update to your local IP for QR codes
+PORT=4000
+NODE_ENV=production
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+CORS_ORIGIN=https://hearandguess.com,https://www.hearandguess.com,https://songgame.theagarwals.com
 ```
 
-That's it! No Spotify credentials needed on the backend.
+**Quiz Master Web** - Update `packages/quiz-master-web/src/config/environment.ts`:
+- Spotify Client ID is configured in the file
+- Uses `window.location.origin` for dynamic URLs
 
-**Quiz Master** (`packages/quiz-master/.env`):
-```env
-EXPO_PUBLIC_BACKEND_URL=http://192.168.1.100:3000  # Update to your backend IP
-```
-
-**Participant Web** (`packages/participant-web/.env`):
-```env
-VITE_BACKEND_URL=http://192.168.1.100:3000  # Update to your backend IP
-```
-
-### 3. Build Shared Package
+### 4. Build Shared Package
 
 ```bash
 cd packages/shared
@@ -126,17 +143,11 @@ cd packages/backend
 npm run dev
 ```
 
-The backend will start on `http://localhost:3000`
-
-**Terminal 2 - Quiz Master App**:
+**Terminal 2 - Quiz Master Web App**:
 ```bash
-cd packages/quiz-master
-npm start
+cd packages/quiz-master-web
+npm run dev
 ```
-
-Then press:
-- `a` for Android emulator
-- Scan QR code with Expo Go app on physical device
 
 **Terminal 3 - Participant Web App**:
 ```bash
@@ -144,94 +155,144 @@ cd packages/participant-web
 npm run dev
 ```
 
-The web app will start on `http://localhost:5173`
-
-### Using the Monorepo Scripts
-
-From the root directory, you can also run:
-
-```bash
-# Run backend dev server
-npm run dev:backend
-
-# Run quiz master app
-npm run dev:quiz
-
-# Run participant web app
-npm run dev:web
-
-# Run backend and web in parallel
-npm run dev
-```
+Access the apps:
+- Quiz Master: http://localhost:5173
+- Participants: http://localhost:5173/join
 
 ## How to Play
 
 ### Quiz Master Setup
 
-1. Start the Quiz Master app on your Android device
-2. Connect your Spotify Premium account
-3. Browse your Spotify playlists
-4. Select a playlist to use for the quiz
-5. Create a game session
-6. Display the QR code on a TV (via HDMI or screen casting)
+1. **Prepare Spotify:**
+   - Open Spotify on your phone, tablet, or computer
+   - Play any song for 1-2 seconds (this activates your device)
 
-### Participants Join
+2. **Login:**
+   - Visit [hearandguess.com](https://hearandguess.com)
+   - Click "Connect with Spotify"
+   - Authorize the app
 
-1. Scan the QR code with their phone camera
-2. Opens the participant web app
-3. Enter their name
-4. Wait in the lobby for the game to start
+3. **Configure Settings (Optional):**
+   - Click the settings icon (⚙️)
+   - Adjust song duration, number of songs, penalties, countdown timer
+   - Select which Spotify device to use for playback
 
-### Gameplay
+4. **Select Playlist:**
+   - Choose any of your Spotify playlists
+   - The app will use available songs from that playlist
 
-1. Quiz master starts the game
-2. A random song plays from a random start point
-3. Participants press the buzzer button when they know the answer
-4. Quiz master sees the buzzer queue (who buzzed first, second, etc.)
-5. Quiz master asks participants for their answers
-6. Quiz master selects the person who got it right
-7. Points awarded: 60 - seconds_elapsed
-8. Quiz master starts the next song
-9. Repeat until all songs are complete
-10. Final leaderboard displayed
+5. **Share the Game:**
+   - Show participants the QR code
+   - Or share the session code (5 characters, e.g., "ABC12")
+
+6. **Start Playing:**
+   - Wait for participants to join
+   - Click "Start Game"
+   - Control playback and award points
+
+### For Participants
+
+1. Scan the QR code or visit hearandguess.com/join
+2. Enter the session code (if not using QR)
+3. Enter your name
+4. Wait for the game to start
+5. Press the buzz button when you know the answer
+6. Answer quickly for more points!
+
+### Gameplay Flow
+
+1. Quiz master starts each round
+2. A song plays from your selected Spotify device
+3. Participants buzz in when they recognize the song
+4. Countdown timer appears (configurable, default 3 seconds)
+5. Quiz master sees who buzzed and when
+6. Quiz master marks answers as correct (✓) or incorrect (✗)
+7. Points awarded based on speed
+8. Next round begins
+9. Final leaderboard shows at the end
+
+### Scoring
+
+- **Points = 60 - seconds elapsed** when you buzz
+- Faster buzz = more points
+- Wrong answers = penalty (configurable, default 25% of potential points)
+- Earlier buzzers automatically marked wrong when someone else is marked correct
+
+## Production Deployment
+
+### Current Setup
+
+The app runs on a GCP instance with:
+- **nginx** - Reverse proxy and SSL termination
+- **PM2** - Process manager for Node.js backend
+- **Let's Encrypt** - SSL certificates (auto-renewing)
+- **Domains**:
+  - hearandguess.com (primary)
+  - www.hearandguess.com
+  - songgame.theagarwals.com (legacy)
+
+### Deployment Process
+
+```bash
+# Build all apps
+npm run build:prod
+
+# Deploy to server (from local machine)
+cd packages/quiz-master-web
+rsync -avz --delete dist/ user@server:~/app/songgame/packages/quiz-master-web/dist/
+
+cd ../participant-web
+rsync -avz --delete dist/ user@server:~/app/songgame/packages/participant-web/dist/
+
+cd ../backend
+rsync -avz dist/ user@server:~/app/songgame/packages/backend/dist/
+
+# Restart backend (on server)
+pm2 restart songgame
+```
+
+### nginx Configuration
+
+Located at `/etc/nginx/sites-available/songgame`:
+- Serves both quiz-master-web and participant-web static files
+- Proxies `/api/*` and `/socket.io/*` to backend on port 4000
+- SSL certificates from Let's Encrypt
+- Handles all three domains
 
 ## API Endpoints
 
 ### Game Management
 
 - `POST /api/game/create` - Create new game session
-- `GET /api/game/:sessionId` - Get game details
 - `POST /api/game/:sessionId/start` - Start the game
-- `POST /api/game/:sessionId/next` - Next song
-- `POST /api/game/:sessionId/score` - Award points
-- `POST /api/game/:sessionId/pause` - Pause game
-- `POST /api/game/:sessionId/resume` - Resume game
-- `DELETE /api/game/:sessionId` - End game
+- `GET /api/game/:sessionId` - Get game state
+- `POST /api/game/:sessionId/next` - Advance to next round
+- `POST /api/game/:sessionId/score` - Award points to participant
+- `POST /api/game/:sessionId/incorrect` - Mark answer as incorrect
+- `POST /api/game/:sessionId/end` - End the game
+- `POST /api/game/:sessionId/restart` - Restart with same participants
 
-### Spotify Integration
+### Health Check
 
-All endpoints require `Authorization: Bearer {token}` header (token from Quiz Master app):
-
-- `GET /api/spotify/playlists` - Get user's playlists
-- `GET /api/spotify/playlist/:id/tracks` - Get tracks from playlist
-- `GET /api/spotify/user` - Get current user profile
+- `GET /api/health` - Server health status
 
 ## Socket.io Events
 
 ### Client → Server
 
-- `join_game` - Participant joins session
-- `buzzer_pressed` - Participant presses buzzer
-- `leave_game` - Participant leaves
+- `join_session` - Participant joins game
+- `leave_session` - Participant leaves
+- `buzzer` - Participant presses buzzer
 
 ### Server → Client
 
 - `game_state_update` - Game state changed
 - `participant_joined` - New participant joined
 - `participant_left` - Participant left
-- `buzzer_event` - Someone pressed buzzer
-- `song_started` - New song started
-- `round_ended` - Round complete
+- `round_started` - New round started
+- `song_started` - Song playback started
+- `buzzer_event` - Someone buzzed in
+- `round_ended` - Round completed
 - `score_update` - Scores updated
 - `game_ended` - Game finished
 
@@ -242,135 +303,128 @@ All endpoints require `Authorization: Bearer {token}` header (token from Quiz Ma
 All timing is server-authoritative to prevent cheating:
 
 ```typescript
-const elapsedSeconds = (buzzerTime - songStartTime) / 1000;
+const elapsedSeconds = (Date.now() - songStartTime) / 1000;
 const score = Math.max(0, 60 - Math.floor(elapsedSeconds));
 ```
 
-### Random Song Start Points
+### Session IDs
 
-Songs start at random positions (avoiding first/last 20%):
+5-character alphanumeric codes (case-insensitive):
+- Easy to type and share
+- No ambiguous characters (0, O, 1, I removed)
+- Example: "ABC12", "XY7Z3"
 
-```typescript
-const safeStart = duration * 0.2;
-const safeEnd = duration * 0.8;
-const randomOffset = Math.random() * (safeEnd - safeStart) + safeStart;
-```
+### Spotify Playback
 
-### Security Features
+Uses Spotify Connect API (not Web Playback SDK):
+- Controls existing Spotify devices remotely
+- Works with phones, tablets, computers, speakers
+- Requires device to be "active" (play a song briefly first)
+- Device selection available in settings
 
-- Crypto-secure session IDs (`crypto.randomUUID()`)
-- Session-based Spotify authentication
-- Secure token storage per game session
-- Rate limiting on buzzer presses (1 per second)
-- CORS whitelist configuration
-- Input sanitization
+### Sound Effects
 
-## Building for Production
+Web Audio API for responsive feedback:
+- Buzz sound on button press (participant)
+- Two-tone siren when someone buzzes (quiz master)
+- Rising arpeggio for correct answers
+- Descending tone for incorrect answers
+- Beep at end of countdown
 
-### Backend
+## Analytics
 
-```bash
-cd packages/backend
-npm run build
-npm start
-```
+Google Analytics 4 tracking:
+- **Measurement ID**: G-FRNR97D18L
+- **Tracked Events**:
+  - Game created (with settings)
+  - Game started (with participant count)
+  - Game ended (completion stats)
+  - Participant joined
+  - Page views across both apps
 
-Or use Docker:
+## Info & Legal
 
-```bash
-docker build -t song-quiz-backend ./packages/backend
-docker run -p 3000:3000 song-quiz-backend
-```
-
-### Quiz Master Android APK
-
-```bash
-cd packages/quiz-master
-npx eas build --platform android --profile production
-```
-
-### Participant Web App
-
-```bash
-cd packages/participant-web
-npm run build
-
-# Serve the dist/ folder with the backend or deploy to Vercel/Netlify
-```
-
-## Network Setup
-
-For local network play:
-
-1. Ensure all devices are on the same WiFi network
-2. Find your computer's local IP address (e.g., `192.168.1.100`)
-3. Update environment variables with this IP
-4. Backend accessible at `http://192.168.1.100:3000`
-5. Participant web app at `http://192.168.1.100:5173`
-6. QR code will contain the correct join URL
+Visit [hearandguess.com/info](https://hearandguess.com/info) for:
+- Complete how-to-play guide
+- Privacy policy
+- Terms of service
+- Contact information
 
 ## Troubleshooting
 
-### Backend won't start
+### Spotify device not detected
 
-- Check that port 3000 is not in use
-- Verify Spotify credentials are set in `.env`
-- Check .env file is present in packages/backend
-- Look for "Spotify: Configured ✓" in startup logs
-
-### Quiz Master can't connect
-
-- Verify EXPO_PUBLIC_BACKEND_URL points to correct IP
-- Ensure backend is running
-- Check firewall settings
+1. Open Spotify app on your device
+2. Play any song for 1-2 seconds
+3. Return to Hear and Guess
+4. Go to Settings and select your device
+5. If device disappears, repeat steps 1-2
 
 ### Participants can't join
 
-- Verify VITE_BACKEND_URL is correct
-- Ensure backend CORS_ORIGIN includes participant web URL
-- Check that Socket.io is working (backend logs)
+- Check that session code is correct (5 characters)
+- Ensure backend server is running
+- Verify CORS settings include participant URL
+- Check Socket.io connection in browser console
 
-### Spotify authentication fails
+### Songs won't play
 
-- Verify Spotify Client ID and Secret are correct
-- Check redirect URI matches in Spotify Dashboard and `.env`
-- Make sure Spotify Developer App is not in Development Mode restrictions
-- See [Spotify Setup Guide](./SPOTIFY_SETUP.md) for detailed troubleshooting
+- Verify Spotify Premium is active
+- Ensure Spotify app is open and has played recently
+- Check device selection in settings
+- Try transferring playback to your device manually in Spotify
+- Refresh the page and try again
+
+### Wrong answers not penalized
+
+- Check that negative points percentage is > 0 in settings
+- Ensure you're clicking the ✗ button (not just skipping)
+- Verify score updates in the leaderboard
 
 ## Development Roadmap
 
-### Phase 1: MVP ✅
-- [x] Monorepo structure
-- [x] Shared types package
-- [x] Backend with Socket.io
-- [x] Game session management
-- [x] NAS file browsing
-- [x] MP3 metadata extraction
-- [x] Quiz master app initialization
-- [x] Participant web app initialization
+### Completed ✅
+- [x] Monorepo structure with workspaces
+- [x] Backend with Socket.io and game management
+- [x] Quiz master web app with Spotify integration
+- [x] Participant web app with buzzer system
+- [x] Real-time scoring and leaderboard
+- [x] Configurable game settings
+- [x] Buzzer countdown timer
+- [x] Sound effects and haptic feedback
+- [x] Negative points system
+- [x] Album artwork display
+- [x] Google Analytics integration
+- [x] Production deployment on GCP
+- [x] SSL certificates with Let's Encrypt
+- [x] Multiple domain support
+- [x] Info/legal page
+- [x] Branding update to "Hear and Guess"
 
-### Phase 2: UI Implementation
-- [ ] Quiz master screens (Setup, Game, Leaderboard)
-- [ ] Audio playback with random start
-- [ ] Participant buzzer button
-- [ ] Real-time score display
-
-### Phase 3: Testing & Polish
-- [ ] End-to-end testing
-- [ ] Error handling
-- [ ] Loading states
-- [ ] Animations
-- [ ] Sound effects
-
-### Phase 4: Deployment
-- [ ] Android APK build
-- [ ] Docker deployment
-- [ ] Production configuration
+### Future Enhancements
+- [ ] Team mode (teams compete)
+- [ ] Playlist creation from app
+- [ ] Song difficulty ratings
+- [ ] Historical leaderboards
+- [ ] Custom sound effects
+- [ ] Theme customization
+- [ ] Mobile app versions
+- [ ] Spotify playlist analysis/recommendations
 
 ## Contributing
 
-This is a personal project, but suggestions and bug reports are welcome!
+This is an open-source project! Contributions, suggestions, and bug reports are welcome.
 
 ## License
 
 MIT
+
+## Contact
+
+Questions? Contact us at [kj3yihkvm@mozmail.com](mailto:kj3yihkvm@mozmail.com)
+
+---
+
+Built with ♥ using React, TypeScript, Node.js, Socket.io, and Spotify API
+
+Not affiliated with Spotify.
