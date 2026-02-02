@@ -87,6 +87,10 @@ class SpotifyPlaybackService {
       this.player.disconnect();
       this.player = null;
       this.deviceId = null;
+
+      // CRITICAL: Wait for disconnect to propagate to Spotify's backend
+      console.log('⏳ Waiting for disconnect to complete...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     // Wait for SDK to be ready

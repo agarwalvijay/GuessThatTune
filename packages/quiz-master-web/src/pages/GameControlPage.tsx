@@ -123,6 +123,9 @@ export function GameControlPage() {
       if (gameSession) {
         socketService.leaveSession(gameSession.id);
       }
+
+      // Disconnect Spotify player when leaving page
+      spotifyPlaybackService.disconnect();
     };
   }, []);
 
@@ -508,8 +511,9 @@ export function GameControlPage() {
     }
 
     try {
-      // Stop playback before ending the game
+      // Stop playback and disconnect player before ending the game
       await spotifyPlaybackService.pause();
+      spotifyPlaybackService.disconnect();
       const result = await apiService.endGameSession(gameSession.id);
       // Update session state to 'ended' before navigating
       if (result && result.session) {
