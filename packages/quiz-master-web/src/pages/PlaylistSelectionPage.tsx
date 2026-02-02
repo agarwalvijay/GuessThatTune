@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
 import { apiService } from '../services/apiService';
 import { spotifyAuthService } from '../services/spotifyAuthService';
+import { spotifyPlaybackService } from '../services/spotifyPlaybackService';
 import type { Playlist } from '../store/appStore';
 
 export function PlaylistSelectionPage() {
@@ -56,6 +57,7 @@ export function PlaylistSelectionPage() {
   };
 
   const handleLogout = () => {
+    spotifyPlaybackService.disconnect(); // Clean up player on logout
     spotifyAuthService.logout();
     navigate('/');
   };

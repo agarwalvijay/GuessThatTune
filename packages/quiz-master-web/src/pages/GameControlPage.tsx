@@ -124,8 +124,8 @@ export function GameControlPage() {
         socketService.leaveSession(gameSession.id);
       }
 
-      // Disconnect Spotify player when leaving page
-      spotifyPlaybackService.disconnect();
+      // Note: Don't disconnect player here - keep it alive for next game
+      // Only disconnect when user logs out or navigates to playlist selection
     };
   }, []);
 
