@@ -413,11 +413,13 @@ Visit [hearandguess.com/info](https://hearandguess.com/info) for:
 
 ## Contributing
 
-This is an open-source project! Contributions, suggestions, and bug reports are welcome.
+Suggestions and bug reports are welcome! For contributions, please contact us first.
 
-## License
+## Copyright
 
-MIT
+Copyright © 2026 Vijay Agarwal. All rights reserved.
+
+This software is proprietary. For licensing inquiries, please contact [kj3yihkvm@mozmail.com](mailto:kj3yihkvm@mozmail.com)
 
 ## Contact
 
