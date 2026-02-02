@@ -131,14 +131,6 @@ export function GameControlPage() {
 
     try {
       await spotifyPlaybackService.initialize(accessToken);
-
-      // Set the selected device if configured
-      const { gameSettings } = useAppStore.getState();
-      if (gameSettings.selectedDeviceId) {
-        spotifyPlaybackService.setSelectedDevice(gameSettings.selectedDeviceId);
-        console.log('✅ Using selected device:', gameSettings.selectedDeviceId);
-      }
-
       console.log('✅ Spotify playback service initialized');
     } catch (error) {
       console.error('Failed to initialize playback service:', error);

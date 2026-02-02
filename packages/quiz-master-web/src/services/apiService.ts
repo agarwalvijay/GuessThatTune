@@ -201,23 +201,6 @@ class ApiService {
   }
 
   /**
-   * Get available Spotify devices
-   */
-  async getSpotifyDevices(accessToken: string): Promise<any[]> {
-    try {
-      const response = await axios.get('https://api.spotify.com/v1/me/player/devices', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-      return response.data.devices || [];
-    } catch (error) {
-      console.error('Error fetching Spotify devices:', error);
-      return [];
-    }
-  }
-
-  /**
    * Restart a game session with the same participants
    */
   async restartGameSession(sessionId: string, songs: Song[]): Promise<GameSession> {

@@ -1,208 +1,237 @@
-import axios from 'axios';
+// Spotify Web Playback SDK Type Definitions
+declare global {
+  interface Window {
+    onSpotifyWebPlaybackSDKReady: () => void;
+    Spotify: {
+      Player: new (options: {
+        name: string;
+        getOAuthToken: (cb: (token: string) => void) => void;
+        volume?: number;
+      }) => SpotifyPlayer;
+    };
+  }
+}
 
-interface SpotifyDevice {
-  id: string;
-  name: string;
-  type: string;
-  is_active: boolean;
-  is_restricted: boolean;
+interface SpotifyPlayer {
+  connect(): Promise<boolean>;
+  disconnect(): void;
+  addListener(event: string, callback: (data: any) => void): void;
+  removeListener(event: string, callback?: (data: any) => void): void;
+  getCurrentState(): Promise<SpotifyPlaybackState | null>;
+  setName(name: string): Promise<void>;
+  getVolume(): Promise<number>;
+  setVolume(volume: number): Promise<void>;
+  pause(): Promise<void>;
+  resume(): Promise<void>;
+  togglePlay(): Promise<void>;
+  seek(positionMs: number): Promise<void>;
+  previousTrack(): Promise<void>;
+  nextTrack(): Promise<void>;
+}
+
+interface SpotifyPlaybackState {
+  context: {
+    uri: string | null;
+    metadata: any;
+  };
+  disallows: {
+    pausing: boolean;
+    peeking_next: boolean;
+    peeking_prev: boolean;
+    resuming: boolean;
+    seeking: boolean;
+    skipping_next: boolean;
+    skipping_prev: boolean;
+  };
+  paused: boolean;
+  position: number;
+  repeat_mode: number;
+  shuffle: boolean;
+  track_window: {
+    current_track: {
+      uri: string;
+      id: string;
+      type: string;
+      media_type: string;
+      name: string;
+      is_playable: boolean;
+      album: {
+        uri: string;
+        name: string;
+        images: Array<{ url: string }>;
+      };
+      artists: Array<{ uri: string; name: string }>;
+    };
+    previous_tracks: any[];
+    next_tracks: any[];
+  };
 }
 
 class SpotifyPlaybackService {
   private accessToken: string | null = null;
-  private selectedDeviceId: string | null = null;
+  private player: SpotifyPlayer | null = null;
+  private deviceId: string | null = null;
+  private sdkReady: boolean = false;
 
   /**
    * Initialize the playback service with access token
    */
   async initialize(accessToken: string): Promise<void> {
     this.accessToken = accessToken;
-    console.log('✅ Spotify playback service initialized');
+    console.log('🎵 Initializing Spotify Web Playback SDK...');
+
+    // If already initialized, just reconnect with new token
+    if (this.player) {
+      console.log('♻️ Reconnecting existing player...');
+      return;
+    }
+
+    // Wait for SDK to be ready
+    await this.waitForSDK();
+
+    // Initialize the player
+    await this.initializePlayer();
   }
 
   /**
-   * Set the selected device ID
+   * Wait for Spotify SDK to be loaded
    */
-  setSelectedDevice(deviceId: string): void {
-    this.selectedDeviceId = deviceId;
-    console.log('🎵 Selected device:', deviceId);
+  private waitForSDK(): Promise<void> {
+    if (this.sdkReady || window.Spotify) {
+      this.sdkReady = true;
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      window.onSpotifyWebPlaybackSDKReady = () => {
+        console.log('✅ Spotify Web Playback SDK ready');
+        this.sdkReady = true;
+        resolve();
+      };
+    });
   }
 
   /**
-   * Get available Spotify devices
+   * Initialize the Web Playback SDK player
    */
-  async getDevices(): Promise<SpotifyDevice[]> {
+  private async initializePlayer(): Promise<void> {
     if (!this.accessToken) {
       throw new Error('No access token available');
     }
 
-    try {
-      const response = await axios.get('https://api.spotify.com/v1/me/player/devices', {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-        },
-      });
-
-      return response.data.devices;
-    } catch (error) {
-      console.error('Error fetching devices:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Transfer playback to a specific device
-   */
-  private async transferPlayback(deviceId: string): Promise<void> {
-    if (!this.accessToken) {
-      throw new Error('No access token available');
+    if (!window.Spotify) {
+      throw new Error('Spotify SDK not loaded');
     }
 
-    try {
-      console.log('🔄 Transferring playback to device:', deviceId);
-      await axios.put(
-        'https://api.spotify.com/v1/me/player',
-        {
-          device_ids: [deviceId],
-          play: false, // Don't start playing yet
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json',
-          },
+    // Create player instance
+    this.player = new window.Spotify.Player({
+      name: 'Hear and Guess Web Player',
+      getOAuthToken: (cb: (token: string) => void) => {
+        if (this.accessToken) {
+          cb(this.accessToken);
         }
-      );
-      console.log('✅ Playback transferred successfully');
-    } catch (error: any) {
-      // Log but don't throw - we'll try to play anyway
-      console.warn('⚠️ Could not transfer playback:', error.response?.data || error.message);
+      },
+      volume: 0.5,
+    });
+
+    // Set up event listeners
+    this.setupPlayerListeners();
+
+    // Connect to Spotify
+    const connected = await this.player.connect();
+    if (connected) {
+      console.log('✅ Spotify Web Player connected successfully');
+    } else {
+      throw new Error('Failed to connect Spotify Web Player');
     }
   }
 
   /**
-   * Play a song on user's Spotify device
+   * Set up player event listeners
+   */
+  private setupPlayerListeners(): void {
+    if (!this.player) return;
+
+    // Ready event - player is ready to use
+    this.player.addListener('ready', ({ device_id }: { device_id: string }) => {
+      console.log('🎵 Ready with Device ID:', device_id);
+      this.deviceId = device_id;
+    });
+
+    // Not Ready event
+    this.player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
+      console.log('❌ Device ID has gone offline:', device_id);
+    });
+
+    // Player state changed
+    this.player.addListener('player_state_changed', (state: SpotifyPlaybackState | null) => {
+      if (!state) {
+        console.log('⏹️ Playback stopped');
+        return;
+      }
+
+      console.log('🎵 Player state changed:', {
+        paused: state.paused,
+        position: Math.floor(state.position / 1000) + 's',
+        track: state.track_window.current_track.name,
+      });
+    });
+
+    // Errors
+    this.player.addListener('initialization_error', ({ message }: { message: string }) => {
+      console.error('❌ Initialization Error:', message);
+    });
+
+    this.player.addListener('authentication_error', ({ message }: { message: string }) => {
+      console.error('❌ Authentication Error:', message);
+    });
+
+    this.player.addListener('account_error', ({ message }: { message: string }) => {
+      console.error('❌ Account Error:', message);
+    });
+
+    this.player.addListener('playback_error', ({ message }: { message: string }) => {
+      console.error('❌ Playback Error:', message);
+    });
+  }
+
+  /**
+   * Play a song on the Web Player
    */
   async playSong(trackUri: string, startPositionMs: number = 0): Promise<void> {
-    if (!this.accessToken) {
-      throw new Error('No access token available');
+    if (!this.accessToken || !this.deviceId) {
+      throw new Error('Player not initialized');
     }
 
     try {
-      // Get track details to validate duration
-      const trackId = trackUri.split(':')[2];
-      const trackResponse = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
-        headers: { 'Authorization': `Bearer ${this.accessToken}` },
-      });
+      console.log('🎵 Playing track:', trackUri);
+      console.log('📊 Start position:', Math.floor(startPositionMs / 1000), 'seconds');
 
-      const trackDurationMs = trackResponse.data.duration_ms;
-      const trackName = trackResponse.data.name;
-
-      console.log('🎵 Track:', trackName, '-', trackDurationMs / 1000 + 's');
-
-      // Adjust start position if it exceeds track duration
-      if (startPositionMs >= trackDurationMs) {
-        console.warn('⚠️ Start position exceeds track duration, adjusting to 0');
-        startPositionMs = 0;
-      }
-
-      // Get available devices
-      let devices = await this.getDevices();
-      console.log('📱 Available devices:', devices.length);
-
-      // Log all detected devices for debugging
-      devices.forEach(d => {
-        console.log(`  - ${d.name} (${d.type}) - Active: ${d.is_active}`);
-      });
-
-      if (devices.length === 0) {
-        throw new Error('No Spotify devices found. Please open Spotify on your phone or computer and try again.');
-      }
-
-      // Filter out inactive web players (they don't work for remote playback)
-      const physicalDevices = devices.filter(d => {
-        // Skip Computer type devices that look like web players
-        if (d.type === 'Computer' && (d.name.includes('Web Player') || d.name.includes('Quiz'))) {
-          console.log('⏭️ Skipping inactive web player:', d.name);
-          return false;
-        }
-        return true;
-      });
-
-      console.log('📱 Physical devices available:', physicalDevices.length);
-
-      if (physicalDevices.length === 0) {
-        const deviceList = devices.map(d => `${d.name} (${d.type})`).join(', ');
-        throw new Error(`No usable Spotify devices found.\n\nDetected devices: ${deviceList}\n\nPlease:\n1. Keep Spotify app open and playing\n2. Try again`);
-      }
-
-      // Find an active device or use the first available one
-      let targetDevice = this.selectedDeviceId
-        ? physicalDevices.find(d => d.id === this.selectedDeviceId)
-        : physicalDevices.find(d => d.is_active) || physicalDevices[0];
-
-      // If selected device not found, it might have become stale
-      if (!targetDevice && this.selectedDeviceId) {
-        console.warn('⚠️ Selected device not found, it may have become inactive');
-        console.log('💡 Tip: Play a song briefly on your Spotify device to reactivate it');
-
-        // Try to use any available device as fallback
-        targetDevice = physicalDevices.find(d => d.is_active) || physicalDevices[0];
-
-        if (targetDevice) {
-          console.log('🔄 Using fallback device:', targetDevice.name);
-        }
-      }
-
-      if (!targetDevice) {
-        targetDevice = physicalDevices[0];
-      }
-
-      console.log('🎵 Using device:', targetDevice.name, `(${targetDevice.type})`);
-
-      // Transfer playback to the device first to "wake it up"
-      // This helps prevent mobile devices from becoming stale
-      await this.transferPlayback(targetDevice.id);
-
-      // Verify the position doesn't exceed track duration
-      if (startPositionMs >= trackDurationMs) {
-        console.warn('⚠️ Start position exceeds track duration, setting to 0');
-        startPositionMs = 0;
-      }
-
-      // Start playback on the device
-      console.log('▶️ Starting playback on device...');
-      console.log('📊 Track URI:', trackUri);
-      console.log('📊 Start position:', startPositionMs, 'ms (', Math.floor(startPositionMs / 1000), 'seconds )');
-      console.log('📊 Track duration:', trackDurationMs, 'ms (', Math.floor(trackDurationMs / 1000), 'seconds )');
-
-      const playbackPayload = {
-        uris: [trackUri],
-        position_ms: startPositionMs,
-      };
-      console.log('📤 Sending to Spotify:', JSON.stringify(playbackPayload, null, 2));
-
-      await axios.put(
-        `https://api.spotify.com/v1/me/player/play?device_id=${targetDevice.id}`,
-        playbackPayload,
+      // Use Spotify Connect API to start playback on our Web Player device
+      const response = await fetch(
+        `https://api.spotify.com/v1/me/player/play?device_id=${this.deviceId}`,
         {
+          method: 'PUT',
           headers: {
             'Authorization': `Bearer ${this.accessToken}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            uris: [trackUri],
+            position_ms: startPositionMs,
+          }),
         }
       );
 
-      this.selectedDeviceId = targetDevice.id;
-      console.log('✅ Playback command sent to', targetDevice.name);
-    } catch (error: any) {
-      console.error('❌ Error playing song:', error);
-      if (error.response) {
-        console.error('Spotify API Error:', {
-          status: error.response.status,
-          data: error.response.data,
-        });
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('❌ Playback error:', error);
+        throw new Error(`Failed to start playback: ${error.error?.message || 'Unknown error'}`);
       }
+
+      console.log('✅ Playback started');
+    } catch (error) {
+      console.error('❌ Error playing song:', error);
       throw error;
     }
   }
@@ -211,27 +240,16 @@ class SpotifyPlaybackService {
    * Pause playback
    */
   async pause(): Promise<void> {
-    if (!this.accessToken) {
-      throw new Error('No access token available');
+    if (!this.player) {
+      console.warn('⚠️ Player not initialized');
+      return;
     }
 
     try {
-      await axios.put(
-        'https://api.spotify.com/v1/me/player/pause',
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-          },
-        }
-      );
+      await this.player.pause();
       console.log('⏸️ Playback paused');
-    } catch (error: any) {
-      // 404 and 403 are normal - means no active playback or already paused
-      const status = error.response?.status;
-      if (status !== 404 && status !== 403) {
-        console.error('Error pausing playback:', error);
-      }
+    } catch (error) {
+      console.error('❌ Error pausing playback:', error);
     }
   }
 
@@ -239,23 +257,16 @@ class SpotifyPlaybackService {
    * Resume playback
    */
   async resume(): Promise<void> {
-    if (!this.accessToken) {
-      throw new Error('No access token available');
+    if (!this.player) {
+      console.warn('⚠️ Player not initialized');
+      return;
     }
 
     try {
-      await axios.put(
-        'https://api.spotify.com/v1/me/player/play',
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-          },
-        }
-      );
+      await this.player.resume();
       console.log('▶️ Playback resumed');
     } catch (error) {
-      console.error('Error resuming playback:', error);
+      console.error('❌ Error resuming playback:', error);
       throw error;
     }
   }
@@ -264,52 +275,50 @@ class SpotifyPlaybackService {
    * Set volume (0 to 100)
    */
   async setVolume(volume: number): Promise<void> {
-    if (!this.accessToken) return;
+    if (!this.player) return;
 
     try {
-      await axios.put(
-        `https://api.spotify.com/v1/me/player/volume?volume_percent=${volume}`,
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-          },
-        }
-      );
+      // Convert 0-100 to 0-1
+      const volumeFraction = volume / 100;
+      await this.player.setVolume(volumeFraction);
+      console.log('🔊 Volume set to:', volume + '%');
     } catch (error) {
-      console.error('Error setting volume:', error);
+      console.error('❌ Error setting volume:', error);
     }
   }
 
   /**
    * Get current playback state
    */
-  async getCurrentState(): Promise<any> {
-    if (!this.accessToken) return null;
+  async getCurrentState(): Promise<SpotifyPlaybackState | null> {
+    if (!this.player) return null;
 
     try {
-      const response = await axios.get('https://api.spotify.com/v1/me/player', {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-        },
-      });
-
-      if (response.status === 204) {
-        return null;
-      }
-
-      return response.data;
+      const state = await this.player.getCurrentState();
+      return state;
     } catch (error) {
-      console.error('Error getting playback state:', error);
+      console.error('❌ Error getting playback state:', error);
       return null;
     }
   }
 
   /**
-   * Disconnect - cleanup
+   * Disconnect and cleanup
    */
   disconnect(): void {
-    this.selectedDeviceId = null;
+    if (this.player) {
+      console.log('🔌 Disconnecting Spotify Web Player');
+      this.player.disconnect();
+      this.player = null;
+      this.deviceId = null;
+    }
+  }
+
+  /**
+   * Check if player is ready
+   */
+  isReady(): boolean {
+    return this.player !== null && this.deviceId !== null;
   }
 }
 

@@ -64,7 +64,6 @@ interface GameSettings {
   songDuration: number;
   numberOfSongs: number;
   negativePointsPercentage: number;
-  selectedDeviceId?: string;
   buzzerCountdownSeconds: number;
 }
 
