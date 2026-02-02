@@ -7,7 +7,7 @@ import { socketService } from '../services/socketService';
 import { spotifyPlaybackService } from '../services/spotifyPlaybackService';
 import { config } from '../config/environment';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { playBuzzSound } from '../utils/soundEffects';
+import { playBuzzSound, playCorrectSound, playIncorrectSound, playBeepSound } from '../utils/soundEffects';
 import type { Song } from '../store/appStore';
 
 interface RoundData {
@@ -38,9 +38,11 @@ export function GameControlPage() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAwarding, setIsAwarding] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
+  const countdownTimerRef = useRef<number | null>(null);
 
   // Keep screen awake during gameplay
   useWakeLock(true);
@@ -128,12 +130,54 @@ export function GameControlPage() {
 
     try {
       await spotifyPlaybackService.initialize(accessToken);
+
+      // Set the selected device if configured
+      const { gameSettings } = useAppStore.getState();
+      if (gameSettings.selectedDeviceId) {
+        spotifyPlaybackService.setSelectedDevice(gameSettings.selectedDeviceId);
+        console.log('✅ Using selected device:', gameSettings.selectedDeviceId);
+      }
+
       console.log('✅ Spotify playback service initialized');
     } catch (error) {
       console.error('Failed to initialize playback service:', error);
       alert('Failed to initialize Spotify playback. Please refresh and try again.');
     }
   };
+
+  const startCountdown = (seconds: number) => {
+    // Clear any existing countdown
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+    }
+
+    setCountdown(seconds);
+
+    let remaining = seconds;
+    countdownTimerRef.current = setInterval(() => {
+      remaining--;
+      if (remaining > 0) {
+        setCountdown(remaining);
+      } else {
+        setCountdown(null);
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+        // Play beep sound when countdown ends
+        playBeepSound();
+      }
+    }, 1000);
+  };
+
+  // Cleanup countdown on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+    };
+  }, []);
 
   // Play song when we have a round
   useEffect(() => {
@@ -207,6 +251,11 @@ export function GameControlPage() {
       // Reset UI state for new round immediately
       setShowAnswer(false);
       setBuzzerEvents([]);
+      setCountdown(null);
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
       setElapsedSeconds(0);
       setIsPlaying(true);
       setTimeRemaining(data.duration);
@@ -217,10 +266,15 @@ export function GameControlPage() {
       console.log('🎵 Song is playing:', isPlayingRef.current);
       setBuzzerEvents((prev) => [...prev, { ...data.buzzerEvent, position: data.position }]);
 
-      // Play buzz sound only if song is currently playing
+      // Play buzz sound and vibrate only if song is currently playing
       if (isPlayingRef.current) {
-        console.log('🔊 Triggering buzz sound');
+        console.log('🔊 Triggering buzz sound and vibration');
         playBuzzSound();
+
+        // Vibrate for haptic feedback (300ms - slightly longer than participant)
+        if ('vibrate' in navigator) {
+          navigator.vibrate(300);
+        }
       } else {
         console.log('⏸️ Song not playing, skipping buzz sound');
       }
@@ -231,6 +285,11 @@ export function GameControlPage() {
         console.error('Error pausing:', err);
       });
       setIsPlaying(false);
+
+      // Start countdown timer
+      const { gameSettings } = useAppStore.getState();
+      const countdownSeconds = gameSettings.buzzerCountdownSeconds || 3;
+      startCountdown(countdownSeconds);
     });
 
     socketService.onRoundEnded((data) => {
@@ -297,9 +356,19 @@ export function GameControlPage() {
   const handleAwardPoints = async (participantId: string, participantName: string) => {
     if (!currentRound || !gameSession) return;
 
+    // Stop countdown immediately
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setCountdown(null);
+
     try {
       setIsAwarding(true);
       console.log('🏆 Awarding points to:', participantName);
+
+      // Play correct answer sound
+      playCorrectSound();
 
       const roundId = gameSession.rounds?.[currentRound.roundIndex]?.id;
       if (!roundId) {
@@ -341,9 +410,19 @@ export function GameControlPage() {
   const handleMarkIncorrect = async (participantId: string, participantName: string) => {
     if (!currentRound || !gameSession) return;
 
+    // Stop countdown immediately
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setCountdown(null);
+
     try {
       setIsAwarding(true);
       console.log('❌ Marking incorrect:', participantName);
+
+      // Play incorrect answer sound
+      playIncorrectSound();
 
       const roundId = gameSession.rounds?.[currentRound.roundIndex]?.id;
       if (!roundId) {
@@ -493,7 +572,24 @@ export function GameControlPage() {
   const winnerId = gameSession.rounds?.[currentRound.roundIndex]?.winnerId;
 
   return (
-    <div style={styles.container}>
+    <>
+      <style>{`
+        @keyframes countdownZoom {
+          0% {
+            transform: scale(0.5);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+      `}</style>
+      <div style={styles.container}>
       <div style={styles.content}>
         <div style={styles.header}>
           <img src="/logo.png" alt="Guess That Tune!" style={styles.headerLogo} />
@@ -720,7 +816,17 @@ export function GameControlPage() {
           )}
         </div>
       </div>
-    </div>
+
+      {/* Countdown Overlay */}
+      {countdown !== null && (
+        <div style={styles.countdownOverlay} key={countdown}>
+          <div style={styles.countdownNumber}>
+            {countdown}
+          </div>
+        </div>
+      )}
+      </div>
+    </>
   );
 }
 
@@ -1077,5 +1183,26 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '18px',
     color: '#666',
     margin: 0,
+  },
+  countdownOverlay: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 9999,
+    pointerEvents: 'none' as const,
+  },
+  countdownNumber: {
+    fontSize: '350px',
+    fontWeight: '900',
+    color: 'rgba(255, 255, 255, 0.9)',
+    textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+    animation: 'countdownZoom 1s ease-out',
+    userSelect: 'none' as const,
   },
 };

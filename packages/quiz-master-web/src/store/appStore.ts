@@ -64,6 +64,8 @@ interface GameSettings {
   songDuration: number;
   numberOfSongs: number;
   negativePointsPercentage: number;
+  selectedDeviceId?: string;
+  buzzerCountdownSeconds: number;
 }
 
 interface AppState {
@@ -100,6 +102,7 @@ export const useAppStore = create<AppState>((set) => ({
     songDuration: 30,
     numberOfSongs: 10,
     negativePointsPercentage: 25,
+    buzzerCountdownSeconds: 3,
   },
 
   // Actions
@@ -120,6 +123,7 @@ export const useAppStore = create<AppState>((set) => ({
       songDuration: 30,
       numberOfSongs: 10,
       negativePointsPercentage: 25,
+      buzzerCountdownSeconds: 3,
     },
   }),
 }));

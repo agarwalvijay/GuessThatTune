@@ -15,19 +15,34 @@ class ApiService {
   }
 
   /**
-   * Fetch user's Spotify playlists
+   * Fetch user's Spotify playlists (including followed playlists)
    */
   async fetchPlaylists(accessToken: string): Promise<Playlist[]> {
-    const response = await axios.get('https://api.spotify.com/v1/me/playlists', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      params: {
-        limit: 50,
-      },
-    });
+    let allPlaylists: any[] = [];
+    let url = 'https://api.spotify.com/v1/me/playlists';
+    let hasMore = true;
 
-    return response.data.items.map((playlist: any) => ({
+    // Fetch all pages of playlists
+    while (hasMore && url) {
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        params: {
+          limit: 50,
+        },
+      });
+
+      allPlaylists = allPlaylists.concat(response.data.items);
+
+      // Check if there are more pages
+      url = response.data.next;
+      hasMore = !!url;
+    }
+
+    console.log(`✅ Fetched ${allPlaylists.length} total playlists (owned and followed)`);
+
+    return allPlaylists.map((playlist: any) => ({
       id: playlist.id,
       name: playlist.name,
       images: playlist.images,
@@ -183,6 +198,23 @@ class ApiService {
   async endGameSession(sessionId: string): Promise<{ session: GameSession; finalScores: any[] }> {
     const response = await this.api.post(`/api/game/${sessionId}/end`);
     return response.data;
+  }
+
+  /**
+   * Get available Spotify devices
+   */
+  async getSpotifyDevices(accessToken: string): Promise<any[]> {
+    try {
+      const response = await axios.get('https://api.spotify.com/v1/me/player/devices', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      return response.data.devices || [];
+    } catch (error) {
+      console.error('Error fetching Spotify devices:', error);
+      return [];
+    }
   }
 
   /**

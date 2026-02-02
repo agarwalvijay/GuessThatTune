@@ -21,6 +21,14 @@ class SpotifyPlaybackService {
   }
 
   /**
+   * Set the selected device ID
+   */
+  setSelectedDevice(deviceId: string): void {
+    this.selectedDeviceId = deviceId;
+    console.log('🎵 Selected device:', deviceId);
+  }
+
+  /**
    * Get available Spotify devices
    */
   async getDevices(): Promise<SpotifyDevice[]> {
@@ -39,6 +47,36 @@ class SpotifyPlaybackService {
     } catch (error) {
       console.error('Error fetching devices:', error);
       return [];
+    }
+  }
+
+  /**
+   * Transfer playback to a specific device
+   */
+  private async transferPlayback(deviceId: string): Promise<void> {
+    if (!this.accessToken) {
+      throw new Error('No access token available');
+    }
+
+    try {
+      console.log('🔄 Transferring playback to device:', deviceId);
+      await axios.put(
+        'https://api.spotify.com/v1/me/player',
+        {
+          device_ids: [deviceId],
+          play: false, // Don't start playing yet
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      console.log('✅ Playback transferred successfully');
+    } catch (error: any) {
+      // Log but don't throw - we'll try to play anyway
+      console.warn('⚠️ Could not transfer playback:', error.response?.data || error.message);
     }
   }
 
@@ -72,6 +110,11 @@ class SpotifyPlaybackService {
       let devices = await this.getDevices();
       console.log('📱 Available devices:', devices.length);
 
+      // Log all detected devices for debugging
+      devices.forEach(d => {
+        console.log(`  - ${d.name} (${d.type}) - Active: ${d.is_active}`);
+      });
+
       if (devices.length === 0) {
         throw new Error('No Spotify devices found. Please open Spotify on your phone or computer and try again.');
       }
@@ -89,7 +132,8 @@ class SpotifyPlaybackService {
       console.log('📱 Physical devices available:', physicalDevices.length);
 
       if (physicalDevices.length === 0) {
-        throw new Error('No physical Spotify devices found.\n\nPlease:\n1. Open Spotify on your phone or computer\n2. Play any song briefly\n3. Return here and try again');
+        const deviceList = devices.map(d => `${d.name} (${d.type})`).join(', ');
+        throw new Error(`No usable Spotify devices found.\n\nDetected devices: ${deviceList}\n\nPlease:\n1. Keep Spotify app open and playing\n2. Try again`);
       }
 
       // Find an active device or use the first available one
@@ -97,11 +141,28 @@ class SpotifyPlaybackService {
         ? physicalDevices.find(d => d.id === this.selectedDeviceId)
         : physicalDevices.find(d => d.is_active) || physicalDevices[0];
 
+      // If selected device not found, it might have become stale
+      if (!targetDevice && this.selectedDeviceId) {
+        console.warn('⚠️ Selected device not found, it may have become inactive');
+        console.log('💡 Tip: Play a song briefly on your Spotify device to reactivate it');
+
+        // Try to use any available device as fallback
+        targetDevice = physicalDevices.find(d => d.is_active) || physicalDevices[0];
+
+        if (targetDevice) {
+          console.log('🔄 Using fallback device:', targetDevice.name);
+        }
+      }
+
       if (!targetDevice) {
         targetDevice = physicalDevices[0];
       }
 
       console.log('🎵 Using device:', targetDevice.name, `(${targetDevice.type})`);
+
+      // Transfer playback to the device first to "wake it up"
+      // This helps prevent mobile devices from becoming stale
+      await this.transferPlayback(targetDevice.id);
 
       // Verify the position doesn't exceed track duration
       if (startPositionMs >= trackDurationMs) {
@@ -109,7 +170,7 @@ class SpotifyPlaybackService {
         startPositionMs = 0;
       }
 
-      // Start playback directly on the device (no transfer needed)
+      // Start playback on the device
       console.log('▶️ Starting playback on device...');
       console.log('📊 Track URI:', trackUri);
       console.log('📊 Start position:', startPositionMs, 'ms (', Math.floor(startPositionMs / 1000), 'seconds )');
