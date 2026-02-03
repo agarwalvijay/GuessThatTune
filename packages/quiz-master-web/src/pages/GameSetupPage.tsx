@@ -242,24 +242,6 @@ export function GameSetupPage() {
           </div>
         </div>
 
-        <div style={styles.participantsSection}>
-          <h2 style={styles.participantsTitle}>
-            Participants ({participants.length})
-          </h2>
-          <div style={styles.participantsList}>
-            {participants.length === 0 ? (
-              <p style={styles.emptyText}>Waiting for participants to join...</p>
-            ) : (
-              participants.map((participant) => (
-                <div key={participant.id} style={styles.participantCard}>
-                  <span style={styles.participantIcon}>👤</span>
-                  <span style={styles.participantName}>{participant.name}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
         <div style={styles.actions}>
           <button onClick={handleBack} style={styles.backButton}>
             Back
@@ -267,6 +249,20 @@ export function GameSetupPage() {
           <button onClick={handleStartGame} style={styles.button}>
             Start Game
           </button>
+        </div>
+
+        <div style={styles.participantsSection}>
+          <h2 style={styles.participantsTitle}>
+            Participants ({participants.length})
+          </h2>
+          <div style={styles.participantsList}>
+            {participants.map((participant) => (
+              <div key={participant.id} style={styles.participantCard}>
+                <span style={styles.participantIcon}>👤</span>
+                <span style={styles.participantName}>{participant.name}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -369,6 +365,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     gap: '16px',
+    marginBottom: '32px',
   },
   button: {
     backgroundColor: '#1DB954',

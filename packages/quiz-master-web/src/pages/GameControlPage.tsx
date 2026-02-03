@@ -186,7 +186,7 @@ export function GameControlPage() {
         console.log('🎵 First round - loading with auto-pause. User must click START.');
         setIsPlaying(false);
         setShowStartOverlay(true);
-        playSong(currentRound.song, true); // Pass autoPause=true
+        playSong(currentRound.song);
       } else {
         // Subsequent rounds: auto-play (audio already unlocked from first round)
         playSong(currentRound.song);
@@ -194,6 +194,24 @@ export function GameControlPage() {
       }
     }
   }, [currentRound]);
+
+  // Continuous pause loop for first round - keeps pausing until user clicks START
+  useEffect(() => {
+    if (!showStartOverlay) return;
+
+    console.log('⏸️ Starting continuous pause loop for first round');
+
+    // Start pausing at 100ms and continue every 100ms
+    const pauseInterval = setInterval(() => {
+      spotifyPlaybackService.pause();
+    }, 100);
+
+    // Cleanup: stop pausing when overlay is hidden (user clicked START)
+    return () => {
+      console.log('⏸️ Stopping continuous pause loop');
+      clearInterval(pauseInterval);
+    };
+  }, [showStartOverlay]);
 
   const setupSocketListeners = () => {
     if (!gameSession) return;
@@ -338,7 +356,7 @@ export function GameControlPage() {
     });
   };
 
-  const playSong = async (song: any, autoPause: boolean = false) => {
+  const playSong = async (song: any) => {
     try {
       // Random start position (avoiding the very end of the song)
       const durationMs = song.durationMs || (song.metadata?.duration * 1000) || 180000;
@@ -352,14 +370,7 @@ export function GameControlPage() {
       console.log(`🎵 Playing: ${title} by ${artist}`);
       await spotifyPlaybackService.playSong(uri, startPosition);
 
-      // If autoPause, wait briefly for playback to initialize, then pause
-      if (autoPause) {
-        console.log('⏸️ Auto-pausing first round for user to start');
-        // Wait 300ms for playback to actually start on the device
-        await new Promise(resolve => setTimeout(resolve, 300));
-        await spotifyPlaybackService.pause();
-        console.log('⏸️ First round paused successfully');
-      }
+      // For autoPause, the continuous pause loop in useEffect will handle it
     } catch (error: any) {
       console.error('Error playing song:', error);
       const errorMessage = error.message || 'Failed to play song';
