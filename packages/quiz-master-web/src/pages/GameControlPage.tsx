@@ -40,6 +40,7 @@ export function GameControlPage() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAwarding, setIsAwarding] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [showStartOverlay, setShowStartOverlay] = useState(false);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
@@ -108,7 +109,6 @@ export function GameControlPage() {
 
     return () => {
       isSubscribed = false;
-      spotifyPlaybackService.disconnect();
 
       // Clean up all socket listeners
       socketService.off('participant_joined');
@@ -179,8 +179,19 @@ export function GameControlPage() {
   useEffect(() => {
     if (currentRound && !showAnswer) {
       console.log('Round ready, starting playback');
-      playSong(currentRound.song);
-      setIsPlaying(true);
+      const isFirstRound = currentRound.roundIndex === 0;
+
+      if (isFirstRound) {
+        // First round: Load song with auto-pause (user will click START to resume)
+        console.log('🎵 First round - loading with auto-pause. User must click START.');
+        setIsPlaying(false);
+        setShowStartOverlay(true);
+        playSong(currentRound.song, true); // Pass autoPause=true
+      } else {
+        // Subsequent rounds: auto-play (audio already unlocked from first round)
+        playSong(currentRound.song);
+        setIsPlaying(true);
+      }
     }
   }, [currentRound]);
 
@@ -327,7 +338,7 @@ export function GameControlPage() {
     });
   };
 
-  const playSong = async (song: any) => {
+  const playSong = async (song: any, autoPause: boolean = false) => {
     try {
       // Random start position (avoiding the very end of the song)
       const durationMs = song.durationMs || (song.metadata?.duration * 1000) || 180000;
@@ -340,6 +351,15 @@ export function GameControlPage() {
 
       console.log(`🎵 Playing: ${title} by ${artist}`);
       await spotifyPlaybackService.playSong(uri, startPosition);
+
+      // If autoPause, wait briefly for playback to initialize, then pause
+      if (autoPause) {
+        console.log('⏸️ Auto-pausing first round for user to start');
+        // Wait 300ms for playback to actually start on the device
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await spotifyPlaybackService.pause();
+        console.log('⏸️ First round paused successfully');
+      }
     } catch (error: any) {
       console.error('Error playing song:', error);
       const errorMessage = error.message || 'Failed to play song';
@@ -443,6 +463,15 @@ export function GameControlPage() {
       await spotifyPlaybackService.resume();
       setIsPlaying(true);
     }
+  };
+
+  const handleStartFirstRound = async () => {
+    // Hide overlay
+    setShowStartOverlay(false);
+    setIsPlaying(true);
+
+    // Resume playback using direct player method (iOS audio unlock via user gesture)
+    await spotifyPlaybackService.resume();
   };
 
   const handleStop = async () => {
@@ -594,6 +623,16 @@ export function GameControlPage() {
         }
       `}</style>
       <div style={styles.container}>
+        {/* START Overlay for first round (iOS audio unlock) */}
+        {showStartOverlay && (
+          <div style={styles.startOverlay} onClick={handleStartFirstRound}>
+            <div style={styles.startButton}>
+              <div style={styles.playTriangle}>▶</div>
+              <div style={styles.startText}>TAP TO START</div>
+            </div>
+          </div>
+        )}
+
       <div style={styles.content}>
         <div style={styles.header}>
           <img src="/logo.png" alt="Hear and Guess" style={styles.headerLogo} />
@@ -839,6 +878,40 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     backgroundColor: '#f8f9fa',
     padding: '20px',
+    position: 'relative',
+  },
+  startOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+    cursor: 'pointer',
+  },
+  startButton: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '20px',
+    animation: 'pulse 2s ease-in-out infinite',
+  },
+  playTriangle: {
+    fontSize: '120px',
+    color: 'white',
+    textShadow: '0 0 30px rgba(255, 255, 255, 0.5)',
+    lineHeight: 1,
+  },
+  startText: {
+    fontSize: '32px',
+    fontWeight: 'bold',
+    color: 'white',
+    letterSpacing: '4px',
+    textShadow: '0 0 20px rgba(255, 255, 255, 0.3)',
   },
   content: {
     maxWidth: '800px',
