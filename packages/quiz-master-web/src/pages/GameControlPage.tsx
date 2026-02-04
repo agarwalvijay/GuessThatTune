@@ -575,15 +575,38 @@ export function GameControlPage() {
 
   const handleTakeOverPlayback = async () => {
     setShowPlaybackConflictWarning(false);
+
     // Initialize player and continue with setup
     await initializePlayer();
+
+    // Set up socket listeners
     setupSocketListeners();
-    // Fetch session data
+
+    // Fetch session data and set up initial round if game already started
     try {
       const updatedSession = await apiService.getGameSession(gameSession!.id);
+      console.log('Fetched updated session after taking over:', updatedSession);
       setGameSession(updatedSession);
+
+      // Check if game has already started and set initial round
+      if (updatedSession.status === 'playing' && updatedSession.currentRoundIndex >= 0) {
+        const round = updatedSession.rounds?.[updatedSession.currentRoundIndex];
+        const song = updatedSession.songs?.[updatedSession.currentRoundIndex];
+
+        if (round && song) {
+          console.log('Setting initial round from updated session:', { round, song });
+          const roundData = {
+            roundIndex: updatedSession.currentRoundIndex,
+            song: song,
+          };
+          setCurrentRound(roundData);
+          setScores(updatedSession.scores || {});
+          setTimeRemaining(updatedSession.settings.songDuration);
+        }
+      }
     } catch (error) {
       console.error('Error fetching session:', error);
+      alert('Failed to load game session. Please refresh and try again.');
     }
   };
 
