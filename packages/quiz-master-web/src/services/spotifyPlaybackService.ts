@@ -73,6 +73,7 @@ class SpotifyPlaybackService {
   private deviceId: string | null = null;
   private sdkReady: boolean = false;
   private maxInitializationAttempts: number = 3;
+  private onDeviceTakenOverCallback: (() => void) | null = null;
 
   /**
    * Initialize the playback service with access token
@@ -293,9 +294,15 @@ class SpotifyPlaybackService {
       this.deviceId = device_id;
     });
 
-    // Not Ready event
+    // Not Ready event - device has gone offline (usually means another device took over)
     this.player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
       console.log('❌ Device ID has gone offline:', device_id);
+      console.log('⚠️ Playback may have been taken over by another device');
+
+      // Notify the app that this device was taken over
+      if (this.onDeviceTakenOverCallback) {
+        this.onDeviceTakenOverCallback();
+      }
     });
 
     // Player state changed
@@ -547,6 +554,20 @@ class SpotifyPlaybackService {
    */
   isReady(): boolean {
     return this.player !== null && this.deviceId !== null;
+  }
+
+  /**
+   * Set callback for when device is taken over by another device
+   */
+  onDeviceTakenOver(callback: () => void): void {
+    this.onDeviceTakenOverCallback = callback;
+  }
+
+  /**
+   * Clear the device taken over callback
+   */
+  clearDeviceTakenOverCallback(): void {
+    this.onDeviceTakenOverCallback = null;
   }
 }
 

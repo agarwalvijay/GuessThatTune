@@ -45,6 +45,7 @@ export function GameControlPage() {
   const [loadingDots, setLoadingDots] = useState(1);
   const [showPlaybackConflictWarning, setShowPlaybackConflictWarning] = useState(false);
   const [conflictingDeviceName, setConflictingDeviceName] = useState<string>('');
+  const [showDeviceTakenOverWarning, setShowDeviceTakenOverWarning] = useState(false);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
@@ -57,6 +58,20 @@ export function GameControlPage() {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  // Listen for device taken over event
+  useEffect(() => {
+    spotifyPlaybackService.onDeviceTakenOver(() => {
+      console.log('⚠️ Device taken over detected in GameControlPage');
+      setShowDeviceTakenOverWarning(true);
+      // Pause playback since we no longer control it
+      setIsPlaying(false);
+    });
+
+    return () => {
+      spotifyPlaybackService.clearDeviceTakenOverCallback();
+    };
+  }, []);
 
   useEffect(() => {
     console.log('GameControlPage mounted', { accessToken: !!accessToken, gameSession });
@@ -616,6 +631,32 @@ export function GameControlPage() {
     navigate('/playlists');
   };
 
+  const handleTakeBackControl = async () => {
+    setShowDeviceTakenOverWarning(false);
+    console.log('🔄 Taking back control of playback...');
+
+    try {
+      // Reset and reinitialize the player
+      spotifyPlaybackService.reset();
+      await initializePlayer();
+
+      // Resume the current round if there is one
+      if (currentRound) {
+        console.log('▶️ Resuming playback after taking back control');
+        await playSong(currentRound.song);
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('Error taking back control:', error);
+      alert('Failed to take back control. Please refresh the page.');
+    }
+  };
+
+  const handleEndAfterTakeover = async () => {
+    setShowDeviceTakenOverWarning(false);
+    await handleEndGame(true); // Skip confirmation since user already chose to end
+  };
+
   const handleStartFirstRound = async () => {
     // Hide overlay
     setShowStartOverlay(false);
@@ -872,6 +913,32 @@ export function GameControlPage() {
                 </button>
                 <button onClick={handleTakeOverPlayback} style={styles.takeOverButton}>
                   Take Over Playback
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Device Taken Over Warning Modal */}
+        {showDeviceTakenOverWarning && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.conflictModal}>
+              <h2 style={styles.modalTitle}>⚠️ Playback Taken Over</h2>
+              <p style={styles.modalText}>
+                Another device has taken control of playback on your Spotify account.
+              </p>
+              <p style={styles.modalText}>
+                This usually happens when you start another game session on a different device.
+              </p>
+              <p style={styles.modalText}>
+                Would you like to take back control, or end this game?
+              </p>
+              <div style={styles.modalActions}>
+                <button onClick={handleEndAfterTakeover} style={styles.cancelButton}>
+                  End Game
+                </button>
+                <button onClick={handleTakeBackControl} style={styles.takeOverButton}>
+                  Take Back Control
                 </button>
               </div>
             </div>
