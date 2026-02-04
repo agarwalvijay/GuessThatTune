@@ -43,10 +43,8 @@ export function GameControlPage() {
   const [showStartOverlay, setShowStartOverlay] = useState(false);
   const [firstRoundSongLoaded, setFirstRoundSongLoaded] = useState(false);
   const [loadingDots, setLoadingDots] = useState(1);
-  const [originalVolume, setOriginalVolume] = useState<number>(50);
   const [showPlaybackConflictWarning, setShowPlaybackConflictWarning] = useState(false);
   const [conflictingDeviceName, setConflictingDeviceName] = useState<string>('');
-  const [volume, setVolume] = useState<number>(50);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
@@ -74,6 +72,14 @@ export function GameControlPage() {
     const init = async () => {
       // Initialize socket connection
       socketService.connect();
+
+      // Check for playback conflicts BEFORE initializing player
+      const hasConflict = await checkForPlaybackConflict();
+      if (hasConflict) {
+        // Warning modal is shown, wait for user decision
+        // Don't initialize player yet - will be done if user chooses "Take Over"
+        return;
+      }
 
       // Initialize Spotify player
       await initializePlayer();
@@ -194,17 +200,8 @@ export function GameControlPage() {
         setShowStartOverlay(true);
         setFirstRoundSongLoaded(false);
 
-        // Save current volume and mute before loading to prevent audio during pause loop
-        (async () => {
-          const currentVolume = await spotifyPlaybackService.getVolume();
-          if (currentVolume !== null) {
-            // If volume is too low, set to 50% instead
-            const volumeToRestore = currentVolume < 10 ? 50 : currentVolume;
-            setOriginalVolume(volumeToRestore);
-          }
-          await spotifyPlaybackService.setVolume(0);
-          setVolume(0); // Update UI to show volume is muted
-        })();
+        // Mute before loading to prevent audio during pause loop
+        spotifyPlaybackService.setVolume(0);
 
         // Load song and mark as loaded when complete
         playSong(currentRound.song).then(() => {
@@ -236,17 +233,6 @@ export function GameControlPage() {
       clearInterval(pauseInterval);
     };
   }, [showStartOverlay]);
-
-  // Sync volume state with actual player volume on mount
-  useEffect(() => {
-    const syncVolume = async () => {
-      const currentVolume = await spotifyPlaybackService.getVolume();
-      if (currentVolume !== null) {
-        setVolume(currentVolume);
-      }
-    };
-    syncVolume();
-  }, []);
 
   // Animate loading dots (1 -> 2 -> 3 -> 4 -> 1)
   useEffect(() => {
@@ -525,14 +511,21 @@ export function GameControlPage() {
   };
 
   const checkForPlaybackConflict = async (): Promise<boolean> => {
-    if (!accessToken) return false;
+    if (!accessToken) {
+      console.log('🔍 Conflict check: No access token');
+      return false;
+    }
 
     try {
+      console.log('🔍 Checking for playback conflicts...');
       const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
 
-      if (!response.ok) return false;
+      if (!response.ok) {
+        console.log('🔍 Conflict check: API request failed', response.status);
+        return false;
+      }
 
       const data = await response.json();
       const devices = data.devices || [];
@@ -540,50 +533,73 @@ export function GameControlPage() {
       // Get our device ID
       const ourDeviceId = (spotifyPlaybackService as any).deviceId;
 
-      // Check if any OTHER device is currently active/playing
-      const conflictingDevice = devices.find((d: any) =>
+      console.log('🔍 Our device ID:', ourDeviceId);
+      console.log('🔍 All devices:', devices.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        is_active: d.is_active,
+        type: d.type,
+      })));
+
+      // Check for conflicts in two ways:
+      // 1. Any OTHER device is currently active/playing
+      const activeConflict = devices.find((d: any) =>
         d.id !== ourDeviceId && d.is_active
       );
 
+      // 2. Multiple "Hear and Guess" devices exist (indicates multiple game sessions)
+      const hearAndGuessDevices = devices.filter((d: any) =>
+        d.name && d.name.toLowerCase().includes('hear and guess')
+      );
+      const multipleSessionsConflict = hearAndGuessDevices.length > 1 &&
+        hearAndGuessDevices.some((d: any) => d.id !== ourDeviceId);
+
+      const conflictingDevice = activeConflict ||
+        (multipleSessionsConflict ? hearAndGuessDevices.find((d: any) => d.id !== ourDeviceId) : null);
+
       if (conflictingDevice) {
+        console.log('⚠️ CONFLICT DETECTED:', conflictingDevice.name);
+        console.log('Active conflict:', !!activeConflict, 'Multiple sessions:', multipleSessionsConflict);
         setConflictingDeviceName(conflictingDevice.name);
         setShowPlaybackConflictWarning(true);
         return true;
       }
 
+      console.log('✅ No conflicts found');
       return false;
     } catch (error) {
-      console.error('Error checking for playback conflicts:', error);
+      console.error('❌ Error checking for playback conflicts:', error);
       return false;
     }
   };
 
-  const handleTakeOverPlayback = () => {
+  const handleTakeOverPlayback = async () => {
     setShowPlaybackConflictWarning(false);
-    // Continue with normal flow - our transfer playback will take over
-    handleStartFirstRound();
+    // Initialize player and continue with setup
+    await initializePlayer();
+    setupSocketListeners();
+    // Fetch session data
+    try {
+      const updatedSession = await apiService.getGameSession(gameSession!.id);
+      setGameSession(updatedSession);
+    } catch (error) {
+      console.error('Error fetching session:', error);
+    }
   };
 
   const handleCancelPlayback = () => {
     setShowPlaybackConflictWarning(false);
-    setShowStartOverlay(false);
-    alert('Game cancelled. Please stop the other device first.');
+    alert('Game cancelled. Please stop the other game first, then refresh this page.');
+    navigate('/playlists');
   };
 
   const handleStartFirstRound = async () => {
-    // Check for conflicts first (only on first call, not on retry from warning)
-    if (showStartOverlay && !showPlaybackConflictWarning) {
-      const hasConflict = await checkForPlaybackConflict();
-      if (hasConflict) return; // Warning modal will be shown
-    }
-
     // Hide overlay
     setShowStartOverlay(false);
     setIsPlaying(true);
 
-    // Restore volume to original level
-    await spotifyPlaybackService.setVolume(originalVolume);
-    setVolume(originalVolume); // Update UI to show restored volume
+    // Set volume to 50%
+    await spotifyPlaybackService.setVolume(50);
 
     // Resume playback using direct player method (iOS audio unlock via user gesture)
     await spotifyPlaybackService.resume();
@@ -594,11 +610,6 @@ export function GameControlPage() {
     setIsPlaying(false);
     setElapsedSeconds(0);
     setTimeRemaining(gameSession?.settings.songDuration || 30);
-  };
-
-  const handleVolumeChange = async (newVolume: number) => {
-    setVolume(newVolume);
-    await spotifyPlaybackService.setVolume(newVolume);
   };
 
   const handleNextRound = async () => {
@@ -722,12 +733,38 @@ export function GameControlPage() {
     // This eliminates the "Waiting for game to start" intermediate screen
     return (
       <div style={styles.container}>
-        <div style={styles.startOverlay}>
-          <div style={styles.startButton}>
-            <img src="/logo.png" alt="Hear and Guess" style={styles.loadingLogo} />
-            <div style={styles.startText}>LOADING{'.'.repeat(loadingDots)}</div>
+        {/* Playback Conflict Warning Modal (shown even in loading state) */}
+        {showPlaybackConflictWarning && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.conflictModal}>
+              <h2 style={styles.modalTitle}>⚠️ Playback Conflict</h2>
+              <p style={styles.modalText}>
+                Another device is already playing music on your Spotify account:
+              </p>
+              <p style={styles.deviceName}>"{conflictingDeviceName}"</p>
+              <p style={styles.modalText}>
+                Only one game can be active at a time. Would you like to take over playback?
+              </p>
+              <div style={styles.modalActions}>
+                <button onClick={handleCancelPlayback} style={styles.cancelButton}>
+                  Cancel
+                </button>
+                <button onClick={handleTakeOverPlayback} style={styles.takeOverButton}>
+                  Take Over Playback
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {!showPlaybackConflictWarning && (
+          <div style={styles.startOverlay}>
+            <div style={styles.startButton}>
+              <img src="/logo.png" alt="Hear and Guess" style={styles.loadingLogo} />
+              <div style={styles.startText}>LOADING{'.'.repeat(loadingDots)}</div>
+            </div>
+          </div>
+        )}
         <div style={styles.content}>
           <div style={styles.header}>
             <img src="/logo.png" alt="Hear and Guess" style={styles.headerLogo} />
@@ -974,18 +1011,6 @@ export function GameControlPage() {
               >
                 ⏹
               </button>
-              <div style={styles.volumeControl}>
-                <span style={styles.volumeIcon}>🔊</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={volume}
-                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                  style={styles.volumeSlider}
-                />
-                <span style={styles.volumeText}>{volume}%</span>
-              </div>
             </div>
           </div>
 
