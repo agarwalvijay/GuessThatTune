@@ -41,6 +41,9 @@ export function GameControlPage() {
   const [isAwarding, setIsAwarding] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showStartOverlay, setShowStartOverlay] = useState(false);
+  const [firstRoundSongLoaded, setFirstRoundSongLoaded] = useState(false);
+  const [loadingDots, setLoadingDots] = useState(1);
+  const [originalVolume, setOriginalVolume] = useState<number>(50);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
@@ -183,10 +186,26 @@ export function GameControlPage() {
 
       if (isFirstRound) {
         // First round: Load song with auto-pause (user will click START to resume)
-        console.log('🎵 First round - loading with auto-pause. User must click START.');
+        console.log('🎵 First round - loading song. User must click START.');
         setIsPlaying(false);
         setShowStartOverlay(true);
-        playSong(currentRound.song);
+        setFirstRoundSongLoaded(false);
+
+        // Save current volume and mute before loading to prevent audio during pause loop
+        (async () => {
+          const currentVolume = await spotifyPlaybackService.getVolume();
+          if (currentVolume !== null) {
+            // Convert from 0-1 to 0-100
+            setOriginalVolume(Math.round(currentVolume * 100));
+          }
+          await spotifyPlaybackService.setVolume(0);
+        })();
+
+        // Load song and mark as loaded when complete
+        playSong(currentRound.song).then(() => {
+          setFirstRoundSongLoaded(true);
+          console.log('✅ First round song loaded, START button enabled');
+        });
       } else {
         // Subsequent rounds: auto-play (audio already unlocked from first round)
         playSong(currentRound.song);
@@ -212,6 +231,19 @@ export function GameControlPage() {
       clearInterval(pauseInterval);
     };
   }, [showStartOverlay]);
+
+  // Animate loading dots (1 -> 2 -> 3 -> 4 -> 1)
+  useEffect(() => {
+    // Animate dots when: no currentRound OR (showStartOverlay && !firstRoundSongLoaded)
+    const shouldAnimate = !currentRound || (showStartOverlay && !firstRoundSongLoaded);
+    if (!shouldAnimate) return;
+
+    const dotsInterval = setInterval(() => {
+      setLoadingDots((prev) => (prev % 4) + 1);
+    }, 400);
+
+    return () => clearInterval(dotsInterval);
+  }, [currentRound, showStartOverlay, firstRoundSongLoaded]);
 
   const setupSocketListeners = () => {
     if (!gameSession) return;
@@ -481,6 +513,9 @@ export function GameControlPage() {
     setShowStartOverlay(false);
     setIsPlaying(true);
 
+    // Restore volume to original level
+    await spotifyPlaybackService.setVolume(originalVolume);
+
     // Resume playback using direct player method (iOS audio unlock via user gesture)
     await spotifyPlaybackService.resume();
   };
@@ -598,11 +633,31 @@ export function GameControlPage() {
     return () => clearInterval(timer);
   }, [isPlaying, gameSession]); // timeRemaining is NOT in dependencies to avoid recreating interval
 
-  if (!gameSession || !currentRound) {
+  if (!gameSession) {
     return (
       <div style={styles.container}>
         <div style={styles.loadingCard}>
-          <p style={styles.loadingText}>Waiting for game to start...</p>
+          <p style={styles.loadingText}>Loading game...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentRound) {
+    // Show game UI with START overlay in loading state
+    // This eliminates the "Waiting for game to start" intermediate screen
+    return (
+      <div style={styles.container}>
+        <div style={styles.startOverlay}>
+          <div style={styles.startButton}>
+            <div style={styles.startText}>LOADING{'.'.repeat(loadingDots)}</div>
+          </div>
+        </div>
+        <div style={styles.content}>
+          <div style={styles.header}>
+            <img src="/logo.png" alt="Hear and Guess" style={styles.headerLogo} />
+            <h1 style={styles.appTitle}>Hear and Guess</h1>
+          </div>
         </div>
       </div>
     );
@@ -636,10 +691,19 @@ export function GameControlPage() {
       <div style={styles.container}>
         {/* START Overlay for first round (iOS audio unlock) */}
         {showStartOverlay && (
-          <div style={styles.startOverlay} onClick={handleStartFirstRound}>
+          <div
+            style={styles.startOverlay}
+            onClick={firstRoundSongLoaded ? handleStartFirstRound : undefined}
+          >
             <div style={styles.startButton}>
-              <div style={styles.playTriangle}>▶</div>
-              <div style={styles.startText}>TAP TO START</div>
+              {firstRoundSongLoaded ? (
+                <>
+                  <div style={styles.playTriangle}>▶</div>
+                  <div style={styles.startText}>TAP TO START</div>
+                </>
+              ) : (
+                <div style={styles.startText}>LOADING{'.'.repeat(loadingDots)}</div>
+              )}
             </div>
           </div>
         )}

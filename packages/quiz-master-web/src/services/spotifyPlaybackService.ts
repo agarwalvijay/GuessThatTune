@@ -472,6 +472,22 @@ class SpotifyPlaybackService {
   }
 
   /**
+   * Get current volume (0 to 100)
+   */
+  async getVolume(): Promise<number | null> {
+    if (!this.player) return null;
+
+    try {
+      const volumeFraction = await this.player.getVolume();
+      // Convert 0-1 to 0-100
+      return Math.round(volumeFraction * 100);
+    } catch (error) {
+      console.error('❌ Error getting volume:', error);
+      return null;
+    }
+  }
+
+  /**
    * Set volume (0 to 100)
    */
   async setVolume(volume: number): Promise<void> {
