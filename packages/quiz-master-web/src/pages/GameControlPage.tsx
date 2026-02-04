@@ -44,6 +44,9 @@ export function GameControlPage() {
   const [firstRoundSongLoaded, setFirstRoundSongLoaded] = useState(false);
   const [loadingDots, setLoadingDots] = useState(1);
   const [originalVolume, setOriginalVolume] = useState<number>(50);
+  const [showPlaybackConflictWarning, setShowPlaybackConflictWarning] = useState(false);
+  const [conflictingDeviceName, setConflictingDeviceName] = useState<string>('');
+  const [volume, setVolume] = useState<number>(50);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
@@ -195,10 +198,12 @@ export function GameControlPage() {
         (async () => {
           const currentVolume = await spotifyPlaybackService.getVolume();
           if (currentVolume !== null) {
-            // Convert from 0-1 to 0-100
-            setOriginalVolume(Math.round(currentVolume * 100));
+            // If volume is too low, set to 50% instead
+            const volumeToRestore = currentVolume < 10 ? 50 : currentVolume;
+            setOriginalVolume(volumeToRestore);
           }
           await spotifyPlaybackService.setVolume(0);
+          setVolume(0); // Update UI to show volume is muted
         })();
 
         // Load song and mark as loaded when complete
@@ -231,6 +236,17 @@ export function GameControlPage() {
       clearInterval(pauseInterval);
     };
   }, [showStartOverlay]);
+
+  // Sync volume state with actual player volume on mount
+  useEffect(() => {
+    const syncVolume = async () => {
+      const currentVolume = await spotifyPlaybackService.getVolume();
+      if (currentVolume !== null) {
+        setVolume(currentVolume);
+      }
+    };
+    syncVolume();
+  }, []);
 
   // Animate loading dots (1 -> 2 -> 3 -> 4 -> 1)
   useEffect(() => {
@@ -508,13 +524,66 @@ export function GameControlPage() {
     }
   };
 
+  const checkForPlaybackConflict = async (): Promise<boolean> => {
+    if (!accessToken) return false;
+
+    try {
+      const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+
+      if (!response.ok) return false;
+
+      const data = await response.json();
+      const devices = data.devices || [];
+
+      // Get our device ID
+      const ourDeviceId = (spotifyPlaybackService as any).deviceId;
+
+      // Check if any OTHER device is currently active/playing
+      const conflictingDevice = devices.find((d: any) =>
+        d.id !== ourDeviceId && d.is_active
+      );
+
+      if (conflictingDevice) {
+        setConflictingDeviceName(conflictingDevice.name);
+        setShowPlaybackConflictWarning(true);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error checking for playback conflicts:', error);
+      return false;
+    }
+  };
+
+  const handleTakeOverPlayback = () => {
+    setShowPlaybackConflictWarning(false);
+    // Continue with normal flow - our transfer playback will take over
+    handleStartFirstRound();
+  };
+
+  const handleCancelPlayback = () => {
+    setShowPlaybackConflictWarning(false);
+    setShowStartOverlay(false);
+    alert('Game cancelled. Please stop the other device first.');
+  };
+
   const handleStartFirstRound = async () => {
+    // Check for conflicts first (only on first call, not on retry from warning)
+    if (showStartOverlay && !showPlaybackConflictWarning) {
+      const hasConflict = await checkForPlaybackConflict();
+      if (hasConflict) return; // Warning modal will be shown
+    }
+
     // Hide overlay
     setShowStartOverlay(false);
     setIsPlaying(true);
 
     // Restore volume to original level
     await spotifyPlaybackService.setVolume(originalVolume);
+    setVolume(originalVolume); // Update UI to show restored volume
 
     // Resume playback using direct player method (iOS audio unlock via user gesture)
     await spotifyPlaybackService.resume();
@@ -525,6 +594,11 @@ export function GameControlPage() {
     setIsPlaying(false);
     setElapsedSeconds(0);
     setTimeRemaining(gameSession?.settings.songDuration || 30);
+  };
+
+  const handleVolumeChange = async (newVolume: number) => {
+    setVolume(newVolume);
+    await spotifyPlaybackService.setVolume(newVolume);
   };
 
   const handleNextRound = async () => {
@@ -650,6 +724,7 @@ export function GameControlPage() {
       <div style={styles.container}>
         <div style={styles.startOverlay}>
           <div style={styles.startButton}>
+            <img src="/logo.png" alt="Hear and Guess" style={styles.loadingLogo} />
             <div style={styles.startText}>LOADING{'.'.repeat(loadingDots)}</div>
           </div>
         </div>
@@ -687,10 +762,18 @@ export function GameControlPage() {
             opacity: 1;
           }
         }
+        @keyframes logoZoom {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+        }
       `}</style>
       <div style={styles.container}>
         {/* START Overlay for first round (iOS audio unlock) */}
-        {showStartOverlay && (
+        {showStartOverlay && !showPlaybackConflictWarning && (
           <div
             style={styles.startOverlay}
             onClick={firstRoundSongLoaded ? handleStartFirstRound : undefined}
@@ -702,8 +785,35 @@ export function GameControlPage() {
                   <div style={styles.startText}>TAP TO START</div>
                 </>
               ) : (
-                <div style={styles.startText}>LOADING{'.'.repeat(loadingDots)}</div>
+                <>
+                  <img src="/logo.png" alt="Hear and Guess" style={styles.loadingLogo} />
+                  <div style={styles.startText}>LOADING{'.'.repeat(loadingDots)}</div>
+                </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Playback Conflict Warning Modal */}
+        {showPlaybackConflictWarning && (
+          <div style={styles.modalOverlay}>
+            <div style={styles.conflictModal}>
+              <h2 style={styles.modalTitle}>⚠️ Playback Conflict</h2>
+              <p style={styles.modalText}>
+                Another device is already playing music on your Spotify account:
+              </p>
+              <p style={styles.deviceName}>"{conflictingDeviceName}"</p>
+              <p style={styles.modalText}>
+                Only one game can be active at a time. Would you like to take over playback?
+              </p>
+              <div style={styles.modalActions}>
+                <button onClick={handleCancelPlayback} style={styles.cancelButton}>
+                  Cancel
+                </button>
+                <button onClick={handleTakeOverPlayback} style={styles.takeOverButton}>
+                  Take Over Playback
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -864,6 +974,18 @@ export function GameControlPage() {
               >
                 ⏹
               </button>
+              <div style={styles.volumeControl}>
+                <span style={styles.volumeIcon}>🔊</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={volume}
+                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                  style={styles.volumeSlider}
+                />
+                <span style={styles.volumeText}>{volume}%</span>
+              </div>
             </div>
           </div>
 
@@ -981,12 +1103,86 @@ const styles: Record<string, React.CSSProperties> = {
     textShadow: '0 0 30px rgba(255, 255, 255, 0.5)',
     lineHeight: 1,
   },
+  loadingLogo: {
+    width: '200px',
+    height: 'auto',
+    animation: 'logoZoom 1.5s ease-in-out infinite',
+    filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.5))',
+  },
   startText: {
     fontSize: '32px',
     fontWeight: 'bold',
     color: 'white',
     letterSpacing: '4px',
     textShadow: '0 0 20px rgba(255, 255, 255, 0.3)',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10000,
+  },
+  conflictModal: {
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    padding: '32px',
+    maxWidth: '500px',
+    width: '90%',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
+  },
+  modalTitle: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: '16px',
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: '16px',
+    color: '#666',
+    marginBottom: '12px',
+    textAlign: 'center',
+    lineHeight: '1.5',
+  },
+  deviceName: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#667eea',
+    marginBottom: '16px',
+    textAlign: 'center',
+  },
+  modalActions: {
+    display: 'flex',
+    gap: '12px',
+    marginTop: '24px',
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#e0e0e0',
+    color: '#333',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '12px 24px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  takeOverButton: {
+    flex: 1,
+    backgroundColor: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '12px 24px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
   content: {
     maxWidth: '800px',
@@ -1036,6 +1232,7 @@ const styles: Record<string, React.CSSProperties> = {
   playbackControls: {
     display: 'flex',
     gap: '12px',
+    alignItems: 'center',
   },
   controlButton: {
     width: '48px',
@@ -1046,6 +1243,29 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '20px',
     cursor: 'pointer',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+  },
+  volumeControl: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: '24px',
+    padding: '8px 16px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+  },
+  volumeIcon: {
+    fontSize: '18px',
+  },
+  volumeSlider: {
+    width: '100px',
+    cursor: 'pointer',
+    accentColor: '#667eea',
+  },
+  volumeText: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#333',
+    minWidth: '45px',
   },
   timerSection: {
     marginBottom: '16px',
