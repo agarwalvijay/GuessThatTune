@@ -82,7 +82,7 @@ export function GameControlPage() {
     console.log('GameControlPage mounted', { accessToken: !!accessToken, gameSession });
 
     if (!accessToken || !gameSession) {
-      console.error('Missing access token or game session');
+      console.log('⚠️ Missing access token or game session - redirecting to login');
       navigate('/');
       return;
     }

@@ -341,6 +341,11 @@ class SpotifyPlaybackService {
     });
 
     this.player.addListener('playback_error', ({ message }: { message: string }) => {
+      // Ignore "no list was loaded" error - happens during first round loading
+      // when continuous pause loop tries to pause before song is loaded
+      if (message.includes('no list was loaded')) {
+        return;
+      }
       console.error('❌ Playback Error:', message);
     });
   }
@@ -463,7 +468,12 @@ class SpotifyPlaybackService {
     try {
       await this.player.pause();
       console.log('⏸️ Playback paused');
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore "no list was loaded" error - happens during first round loading
+      // when continuous pause loop tries to pause before song is loaded
+      if (error?.message?.includes('no list was loaded')) {
+        return;
+      }
       console.error('❌ Error pausing playback:', error);
     }
   }
