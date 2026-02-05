@@ -306,17 +306,25 @@ class SpotifyPlaybackService {
     });
 
     // Player state changed
+    // Note: SDK fires this event very frequently during transitions
+    let lastLoggedState: string | null = null;
     this.player.addListener('player_state_changed', (state: SpotifyPlaybackState | null) => {
       if (!state) {
         console.log('⏹️ Playback stopped');
+        lastLoggedState = null;
         return;
       }
 
-      console.log('🎵 Player state changed:', {
-        paused: state.paused,
-        position: Math.floor(state.position / 1000) + 's',
-        track: state.track_window.current_track.name,
-      });
+      // Only log when paused state or track actually changes
+      const stateKey = `${state.paused}-${state.track_window.current_track.uri}`;
+      if (stateKey !== lastLoggedState) {
+        console.log('🎵 Player state changed:', {
+          paused: state.paused,
+          position: Math.floor(state.position / 1000) + 's',
+          track: state.track_window.current_track.name,
+        });
+        lastLoggedState = stateKey;
+      }
     });
 
     // Errors

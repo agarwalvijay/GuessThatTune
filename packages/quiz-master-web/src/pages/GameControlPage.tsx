@@ -50,14 +50,19 @@ export function GameControlPage() {
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
   const countdownTimerRef = useRef<number | null>(null);
+  const currentRoundIndexRef = useRef<number>(-1);
 
   // Keep screen awake during gameplay
   useWakeLock(true);
 
-  // Sync ref with state
+  // Sync refs with state
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    currentRoundIndexRef.current = currentRound?.roundIndex ?? -1;
+  }, [currentRound]);
 
   // Listen for device taken over event
   useEffect(() => {
@@ -308,8 +313,8 @@ export function GameControlPage() {
           console.log('Current round index after update:', currentSession.currentRoundIndex);
 
           // Check if this round is already set (e.g., from handleNextRound API call)
-          // to avoid double-triggering playSong
-          if (currentRound?.roundIndex === currentSession.currentRoundIndex) {
+          // Use ref to avoid stale closure value
+          if (currentRoundIndexRef.current === currentSession.currentRoundIndex) {
             console.log('⏭️ Round already set from API, skipping socket-based setup');
             return;
           }
