@@ -795,21 +795,22 @@ export function GameControlPage() {
     return () => clearInterval(timer);
   }, [isPlaying, gameSession]); // timeRemaining is NOT in dependencies to avoid recreating interval
 
-  if (!gameSession) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.loadingCard}>
-          <p style={styles.loadingText}>Loading game...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentRound) {
+  if (!gameSession || !currentRound) {
     // Show game UI with START overlay in loading state
     // This eliminates the "Waiting for game to start" intermediate screen
     return (
-      <div style={styles.container}>
+      <>
+        <style>{`
+          @keyframes logoZoom {
+            0%, 100% {
+              transform: scale(1);
+            }
+            50% {
+              transform: scale(1.1);
+            }
+          }
+        `}</style>
+        <div style={styles.container}>
         {/* Playback Conflict Warning Modal (shown even in loading state) */}
         {showPlaybackConflictWarning && (
           <div style={styles.modalOverlay}>
@@ -849,6 +850,7 @@ export function GameControlPage() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
