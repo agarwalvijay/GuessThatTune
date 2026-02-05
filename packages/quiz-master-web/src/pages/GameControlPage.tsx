@@ -306,6 +306,14 @@ export function GameControlPage() {
 
         if (currentSession) {
           console.log('Current round index after update:', currentSession.currentRoundIndex);
+
+          // Check if this round is already set (e.g., from handleNextRound API call)
+          // to avoid double-triggering playSong
+          if (currentRound?.roundIndex === currentSession.currentRoundIndex) {
+            console.log('⏭️ Round already set from API, skipping socket-based setup');
+            return;
+          }
+
           const round = currentSession.rounds?.[currentSession.currentRoundIndex];
           const song = currentSession.songs?.[currentSession.currentRoundIndex];
 
