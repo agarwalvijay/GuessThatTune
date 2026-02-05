@@ -74,6 +74,7 @@ class SpotifyPlaybackService {
   private sdkReady: boolean = false;
   private maxInitializationAttempts: number = 3;
   private onDeviceTakenOverCallback: (() => void) | null = null;
+  private isDeviceActive: boolean = false;
 
   /**
    * Initialize the playback service with access token
@@ -298,6 +299,7 @@ class SpotifyPlaybackService {
     this.player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
       console.log('❌ Device ID has gone offline:', device_id);
       console.log('⚠️ Playback may have been taken over by another device');
+      this.isDeviceActive = false;
 
       // Notify the app that this device was taken over
       if (this.onDeviceTakenOverCallback) {
@@ -396,8 +398,9 @@ class SpotifyPlaybackService {
     }
 
     try {
-      // Transfer playback to our device first (activate it)
-      if (retryCount === 0) {
+      // Transfer playback to our device first (activate it) - only needed once per session
+      if (retryCount === 0 && !this.isDeviceActive) {
+        console.log('🔄 Activating device for first playback...');
         await this.transferPlayback();
         // Wait a moment for transfer to take effect
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -450,6 +453,7 @@ class SpotifyPlaybackService {
       }
 
       console.log('✅ Playback started successfully');
+      this.isDeviceActive = true; // Mark device as active after first successful playback
     } catch (error) {
       console.error('❌ Error playing song:', error);
       throw error;
@@ -553,6 +557,7 @@ class SpotifyPlaybackService {
     }
     this.player = null;
     this.deviceId = null;
+    this.isDeviceActive = false;
   }
 
   /**
@@ -564,6 +569,7 @@ class SpotifyPlaybackService {
       this.player.disconnect();
       this.player = null;
       this.deviceId = null;
+      this.isDeviceActive = false;
     }
   }
 
