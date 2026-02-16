@@ -165,9 +165,12 @@ export function GameSetupPage() {
         negativePointsPercentage,
         buzzerCountdownSeconds: gameSettings.buzzerCountdownSeconds,
       });
+
+      return session; // Return the session so it can be used immediately
     } catch (err: any) {
       console.error('Error creating game session:', err);
       setError('Failed to create game session. Please try again.');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -177,19 +180,26 @@ export function GameSetupPage() {
     if (!gameSession) return;
 
     try {
+      let sessionToStart = gameSession;
+
       // If game mode changed, recreate the session with new settings
       if (currentGameMode !== gameSession.settings.gameMode) {
-        console.log('🔄 Game mode changed, updating session...');
-        await createGameSession();
+        console.log('🔄 Game mode changed, recreating session...');
+        const newSession = await createGameSession();
+        if (!newSession) {
+          console.error('Failed to recreate session');
+          return;
+        }
+        sessionToStart = newSession;
       }
 
-      await apiService.startGameSession(gameSession.id);
+      await apiService.startGameSession(sessionToStart.id);
 
       // Track game started
       analyticsService.trackGameStarted({
-        sessionId: gameSession.id,
+        sessionId: sessionToStart.id,
         numberOfParticipants: participants.length,
-        numberOfSongs: gameSession.settings.numberOfSongs,
+        numberOfSongs: sessionToStart.settings.numberOfSongs,
       });
 
       navigate('/game-control');
