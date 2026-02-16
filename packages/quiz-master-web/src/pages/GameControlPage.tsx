@@ -964,6 +964,9 @@ export function GameControlPage() {
         <div style={styles.header}>
           <img src="/logo.png" alt="Hear and Guess" style={styles.headerLogo} />
           <h1 style={styles.appTitle}>Hear and Guess</h1>
+          <div style={styles.gameModeIndicator}>
+            {gameSession?.settings?.gameMode === 'multiple_choice' ? '📝' : '🔔'}
+          </div>
         </div>
 
         {/* Two Column Layout: Buzzer Events & Scores */}
@@ -973,9 +976,6 @@ export function GameControlPage() {
             <h2 style={styles.sectionTitle}>
               {gameSession?.settings?.gameMode === 'multiple_choice' ? 'Answers' : 'Who Buzzed In'}
             </h2>
-            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', textAlign: 'center' }}>
-              Mode: {gameSession?.settings?.gameMode === 'multiple_choice' ? '📝 Multiple Choice' : '🔔 Buzzer'}
-            </div>
             <div style={styles.buzzerListContainer}>
               {gameSession?.settings?.gameMode === 'multiple_choice' ? (
                 /* Multiple Choice Answers */
@@ -1419,6 +1419,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: '800',
     color: '#667eea',
     margin: 0,
+    flex: 1,
+  },
+  gameModeIndicator: {
+    fontSize: '28px',
+    marginLeft: 'auto',
     letterSpacing: '-0.5px',
   },
   headerLogo: {
