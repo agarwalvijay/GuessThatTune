@@ -968,11 +968,62 @@ export function GameControlPage() {
 
         {/* Two Column Layout: Buzzer Events & Scores */}
         <div style={styles.twoColumnContainer}>
-          {/* Left Column: Who Buzzed In */}
+          {/* Left Column: Who Buzzed In / Answers */}
           <div style={styles.column}>
-            <h2 style={styles.sectionTitle}>Who Buzzed In</h2>
+            <h2 style={styles.sectionTitle}>
+              {gameSession?.settings?.gameMode === 'multiple_choice' ? 'Answers' : 'Who Buzzed In'}
+            </h2>
+            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px', textAlign: 'center' }}>
+              Mode: {gameSession?.settings?.gameMode === 'multiple_choice' ? '📝 Multiple Choice' : '🔔 Buzzer'}
+            </div>
             <div style={styles.buzzerListContainer}>
-              {buzzerEvents.length > 0 ? (
+              {gameSession?.settings?.gameMode === 'multiple_choice' ? (
+                /* Multiple Choice Answers */
+                (() => {
+                  const currentRoundData = gameSession.rounds?.[gameSession.currentRoundIndex];
+                  return currentRoundData?.multipleChoiceAnswers && currentRoundData.multipleChoiceAnswers.length > 0 ? (
+                    currentRoundData.multipleChoiceAnswers.map((answer) => (
+                    <div
+                      key={answer.id}
+                      style={{
+                        padding: '12px',
+                        marginBottom: '8px',
+                        borderRadius: '8px',
+                        backgroundColor: answer.isCorrect ? '#d4edda' : '#f8d7da',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        border: answer.isCorrect ? '2px solid #28a745' : '2px solid #dc3545',
+                      }}
+                    >
+                      <span style={{ fontWeight: 'bold', flex: 1 }}>{answer.participantName}</span>
+                      <span style={{ fontSize: '14px', flex: 2, textAlign: 'center' }}>{answer.selectedAnswer}</span>
+                      <span
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          backgroundColor: answer.isCorrect ? '#28a745' : '#dc3545',
+                          color: 'white',
+                        }}
+                      >
+                        {answer.isCorrect ? '✓ Correct' : '✗ Wrong'}
+                      </span>
+                      <span style={{ fontWeight: 'bold', marginLeft: '8px', minWidth: '50px', textAlign: 'right' }}>
+                        {answer.score > 0 ? '+' : ''}{answer.score}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div style={styles.emptyState}>
+                    <p style={styles.emptyText}>No answers submitted yet</p>
+                  </div>
+                );
+                })()
+              ) : (
+                /* Buzzer Mode Events */
+                buzzerEvents.length > 0 ? (
                 (() => {
                   // Create a map of buzzer events for quick lookup
                   const buzzerMap = new Map(
@@ -1047,7 +1098,7 @@ export function GameControlPage() {
                 <div style={styles.emptyState}>
                   <p style={styles.emptyText}>No one has buzzed in yet</p>
                 </div>
-              )}
+              ))}
             </div>
           </div>
 

@@ -59,6 +59,14 @@ class SocketService {
 
       store.setGameSession(session);
 
+      // Extract multiple choice options for current round
+      if (session.settings.gameMode === 'multiple_choice') {
+        const currentRound = session.rounds?.[session.currentRoundIndex];
+        if (currentRound?.multipleChoiceOptions) {
+          store.setMultipleChoiceOptions(currentRound.multipleChoiceOptions);
+        }
+      }
+
       // Update my score if available
       const participantId = store.participantId;
       if (participantId && session.scores?.[participantId] !== undefined) {
@@ -86,6 +94,8 @@ class SocketService {
       console.log('🎵 Song started:', roundId);
       const store = useParticipantStore.getState();
       store.setBuzzed(false);
+      store.setHasAnswered(false);
+      store.setSelectedAnswer(null);
     });
 
     this.socket.on(SERVER_EVENTS.ROUND_ENDED, ({ roundId, winnerName, correctAnswer }) => {
@@ -94,6 +104,8 @@ class SocketService {
       console.log('Correct answer:', `${correctAnswer.title} - ${correctAnswer.artist}`);
       const store = useParticipantStore.getState();
       store.setBuzzed(false);
+      store.setHasAnswered(false);
+      store.setSelectedAnswer(null);
     });
 
     this.socket.on(SERVER_EVENTS.SCORE_UPDATE, ({ scores }) => {
@@ -161,6 +173,32 @@ class SocketService {
           resolve({ success: true });
         } else {
           console.error('❌ Buzz failed:', response.error);
+          resolve({ success: false, error: response.error });
+        }
+      });
+    });
+  }
+
+  async submitMultipleChoiceAnswer(
+    sessionId: string,
+    selectedAnswer: string
+  ): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      if (!this.socket) {
+        resolve({ success: false, error: 'Socket not initialized' });
+        return;
+      }
+
+      console.log('📝 Submitting answer:', selectedAnswer);
+
+      this.socket.emit('multiple_choice_answer', { sessionId, selectedAnswer }, (response) => {
+        if (response.success) {
+          console.log('✅ Answer submitted!');
+          const store = useParticipantStore.getState();
+          store.setHasAnswered(true);
+          resolve({ success: true });
+        } else {
+          console.error('❌ Answer failed:', response.error);
           resolve({ success: false, error: response.error });
         }
       });

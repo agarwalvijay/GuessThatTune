@@ -2,8 +2,10 @@ import { Song } from './Song';
 import { BuzzerEvent } from './BuzzerEvent';
 
 export type GameStatus = 'waiting' | 'playing' | 'paused' | 'ended';
+export type GameMode = 'buzzer' | 'multiple_choice';
 
 export interface GameSettings {
+  gameMode: GameMode; // Game mode selection
   songDuration: number; // Max duration to play each song (seconds)
   maxScore: number; // Maximum points per question (default: 60)
   randomStartOffset: boolean; // Whether to start songs at random positions
@@ -16,6 +18,8 @@ export interface GameRound {
   songStartTime?: number; // Server timestamp when song started playing
   songStartOffset?: number; // Offset in seconds where song started
   buzzerEvents: BuzzerEvent[];
+  multipleChoiceOptions?: string[]; // 4 shuffled song titles for MC mode
+  multipleChoiceAnswers?: MultipleChoiceAnswer[]; // Submitted answers for MC mode
   winnerId?: string; // Participant who answered correctly
   winnerScore?: number; // Points awarded
   isComplete: boolean;
@@ -46,4 +50,15 @@ export interface CreateGameSessionRequest {
 export interface JoinGameRequest {
   sessionId: string;
   participantName: string;
+}
+
+export interface MultipleChoiceAnswer {
+  id: string;
+  participantId: string;
+  participantName: string;
+  selectedAnswer: string;
+  elapsedSeconds: number;
+  score: number;
+  isCorrect: boolean;
+  answerTime: number; // Server timestamp
 }

@@ -108,6 +108,7 @@ class ApiService {
     playlistName: string;
     songs: Song[];
     settings: {
+      gameMode: 'buzzer' | 'multiple_choice';
       songDuration: number;
       numberOfSongs: number;
       negativePointsPercentage: number;

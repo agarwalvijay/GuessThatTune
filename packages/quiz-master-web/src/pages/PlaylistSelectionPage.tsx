@@ -12,6 +12,7 @@ export function PlaylistSelectionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [tempGameMode, setTempGameMode] = useState<'buzzer' | 'multiple_choice'>(gameSettings.gameMode || 'buzzer');
   const [tempSongDuration, setTempSongDuration] = useState(gameSettings.songDuration);
   const [tempNumberOfSongs, setTempNumberOfSongs] = useState(gameSettings.numberOfSongs);
   const [tempNegativePointsPercentage, setTempNegativePointsPercentage] = useState(gameSettings.negativePointsPercentage);
@@ -63,6 +64,7 @@ export function PlaylistSelectionPage() {
   };
 
   const handleOpenSettings = () => {
+    setTempGameMode(gameSettings.gameMode || 'buzzer');
     setTempSongDuration(gameSettings.songDuration);
     setTempNumberOfSongs(gameSettings.numberOfSongs);
     setTempNegativePointsPercentage(gameSettings.negativePointsPercentage);
@@ -72,6 +74,7 @@ export function PlaylistSelectionPage() {
 
   const handleSaveSettings = () => {
     setGameSettings({
+      gameMode: tempGameMode,
       songDuration: tempSongDuration,
       numberOfSongs: tempNumberOfSongs,
       negativePointsPercentage: tempNegativePointsPercentage,
@@ -152,6 +155,40 @@ export function PlaylistSelectionPage() {
               <div style={styles.sliderLabels}>
                 <span>5</span>
                 <span>30</span>
+              </div>
+            </div>
+
+            {/* Game Mode Selector */}
+            <div style={styles.settingGroup}>
+              <label style={styles.settingLabel}>Game Mode</label>
+              <p style={styles.settingDescription}>
+                Choose how participants will answer
+              </p>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button
+                  onClick={() => setTempGameMode('buzzer')}
+                  style={{
+                    ...styles.gameModeButton,
+                    ...(tempGameMode === 'buzzer' ? styles.gameModeButtonActive : {}),
+                  }}
+                >
+                  🔔 Buzzer Mode
+                  <div style={styles.gameModeDescription}>
+                    Press buzzer when you know the answer
+                  </div>
+                </button>
+                <button
+                  onClick={() => setTempGameMode('multiple_choice')}
+                  style={{
+                    ...styles.gameModeButton,
+                    ...(tempGameMode === 'multiple_choice' ? styles.gameModeButtonActive : {}),
+                  }}
+                >
+                  📝 Multiple Choice
+                  <div style={styles.gameModeDescription}>
+                    Select from 4 options
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -403,6 +440,31 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '16px',
     fontWeight: '600',
     cursor: 'pointer',
+  },
+  gameModeButton: {
+    flex: 1,
+    padding: '16px',
+    border: '2px solid #ddd',
+    borderRadius: '8px',
+    backgroundColor: 'white',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    transition: 'all 0.2s',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  gameModeButtonActive: {
+    borderColor: '#1DB954',
+    backgroundColor: '#f0fdf4',
+  },
+  gameModeDescription: {
+    fontSize: '12px',
+    fontWeight: 'normal',
+    color: '#666',
+    marginTop: '4px',
   },
   loadingCard: {
     backgroundColor: 'white',

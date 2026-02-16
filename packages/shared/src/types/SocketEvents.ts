@@ -1,4 +1,4 @@
-import { GameSession } from './GameSession';
+import { GameSession, MultipleChoiceAnswer } from './GameSession';
 import { Participant } from './Participant';
 import { BuzzerEvent } from './BuzzerEvent';
 
@@ -8,6 +8,7 @@ export interface ClientToServerEvents {
   join_session_as_master: (data: { sessionId: string }) => void;
   leave_game: (data: { sessionId: string }) => void;
   buzzer_pressed: (data: { sessionId: string }, callback: (response: { success: boolean; buzzerEvent?: BuzzerEvent; error?: string }) => void) => void;
+  multiple_choice_answer: (data: { sessionId: string; selectedAnswer: string }, callback: (response: { success: boolean; error?: string; result?: MultipleChoiceAnswer }) => void) => void;
 }
 
 // Server -> Client Events
@@ -17,6 +18,7 @@ export interface ServerToClientEvents {
   participant_left: (data: { participantId: string }) => void;
   participant_reconnected: (data: { participantId: string }) => void;
   buzzer_event: (data: { buzzerEvent: BuzzerEvent; position: number }) => void;
+  multiple_choice_submitted: (data: { answer: MultipleChoiceAnswer; participantId: string }) => void;
   song_started: (data: { roundId: string; songStartTime: number; duration: number }) => void;
   round_ended: (data: { roundId: string; winnerId?: string; winnerName?: string; correctAnswer: { title: string; artist: string } }) => void;
   score_update: (data: { scores: Record<string, number> }) => void;

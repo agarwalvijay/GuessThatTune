@@ -151,6 +151,66 @@ export function setupSocketHandlers(
     });
 
     /**
+     * Handle multiple choice answer submission
+     */
+    socket.on('multiple_choice_answer', ({ sessionId, selectedAnswer }, callback) => {
+      try {
+        const participantId = socket.data.participantId;
+
+        if (!participantId) {
+          callback({ success: false, error: 'Not joined to any session' });
+          return;
+        }
+
+        const answer = gameSessionService.handleMultipleChoiceAnswer(
+          sessionId,
+          participantId,
+          selectedAnswer
+        );
+
+        if (!answer) {
+          callback({ success: false, error: 'Answer rejected' });
+          return;
+        }
+
+        // Broadcast answer submitted
+        io.to(sessionId).emit(SERVER_EVENTS.MULTIPLE_CHOICE_SUBMITTED, {
+          answer,
+          participantId,
+        });
+
+        // If correct and first, broadcast round ended
+        const currentRound = gameSessionService.getCurrentRound(sessionId);
+        const session = gameSessionService.getSession(sessionId);
+
+        if (answer.isCorrect && currentRound?.winnerId === participantId && session) {
+          const song = session.songs.find(s => s.id === currentRound.songId);
+
+          io.to(sessionId).emit(SERVER_EVENTS.ROUND_ENDED, {
+            roundId: currentRound.id,
+            winnerId: participantId,
+            winnerName: answer.participantName,
+            correctAnswer: {
+              title: song?.answer.title || 'Unknown',
+              artist: song?.answer.artist || 'Unknown',
+            },
+          });
+
+          io.to(sessionId).emit(SERVER_EVENTS.SCORE_UPDATE, {
+            scores: session.scores
+          });
+        }
+
+        callback({ success: true, result: answer });
+
+        console.log(`MC answer from ${answer.participantName}: ${selectedAnswer} (${answer.isCorrect ? '✓' : '✗'})`);
+      } catch (error) {
+        console.error('Error in multiple_choice_answer:', error);
+        callback({ success: false, error: 'Server error' });
+      }
+    });
+
+    /**
      * Handle participant leaving
      */
     socket.on('leave_game', ({ sessionId }) => {

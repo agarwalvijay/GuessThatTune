@@ -15,6 +15,10 @@ export function GamePage() {
   const buzzerDisabled = useParticipantStore((state) => state.buzzerDisabled);
   const myScore = useParticipantStore((state) => state.myScore);
   const participantId = useParticipantStore((state) => state.participantId);
+  const multipleChoiceOptions = useParticipantStore((state) => state.multipleChoiceOptions);
+  const selectedAnswer = useParticipantStore((state) => state.selectedAnswer);
+  const hasAnswered = useParticipantStore((state) => state.hasAnswered);
+  const setSelectedAnswer = useParticipantStore((state) => state.setSelectedAnswer);
 
   // Keep screen awake during active gameplay
   useWakeLock(true);
@@ -55,6 +59,24 @@ export function GamePage() {
     }
   };
 
+  const handleSelectAnswer = async (answer: string) => {
+    if (hasAnswered || !sessionId || !currentRound) return;
+
+    setSelectedAnswer(answer);
+
+    // Vibrate for haptic feedback (100ms)
+    if ('vibrate' in navigator) {
+      navigator.vibrate(100);
+    }
+
+    try {
+      await socketService.submitMultipleChoiceAnswer(sessionId, answer);
+    } catch (err) {
+      console.error('Failed to submit answer:', err);
+      setSelectedAnswer(null);
+    }
+  };
+
   const currentSongNumber = (gameSession?.currentRoundIndex || 0) + 1;
   const totalSongs = gameSession?.songs?.length || 0;
   const roundWinner = currentRound?.winnerId;
@@ -79,35 +101,72 @@ export function GamePage() {
           </div>
         </div>
 
-        {/* Buzzer */}
-        <div className="buzzer-container">
-          {currentRound && !currentRound.isComplete ? (
-            <>
-              <button
-                className={`buzzer ${hasBuzzed ? 'buzzed' : ''} ${buzzerDisabled ? 'disabled' : ''}`}
-                onClick={handleBuzz}
-                disabled={buzzerDisabled || hasBuzzed}
-              >
-                {hasBuzzed ? '✓ BUZZED!' : 'BUZZ IN'}
-              </button>
-              <p className="buzzer-hint">
-                {hasBuzzed
-                  ? 'Waiting for quiz master...'
-                  : 'Tap to buzz in when you know the answer!'}
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="waiting-indicator">
-                <div className="pulse"></div>
-                <p>Waiting for next song...</p>
-              </div>
-              {isWinner && (
-                <div className="winner-message">
-                  🎉 You got it right! 🎉
+        {/* Game Mode Container */}
+        <div className="game-mode-container">
+          {gameSession?.settings?.gameMode === 'buzzer' ? (
+            // BUZZER MODE
+            currentRound && !currentRound.isComplete ? (
+              <>
+                <button
+                  className={`buzzer ${hasBuzzed ? 'buzzed' : ''} ${buzzerDisabled ? 'disabled' : ''}`}
+                  onClick={handleBuzz}
+                  disabled={buzzerDisabled || hasBuzzed}
+                >
+                  {hasBuzzed ? '✓ BUZZED!' : 'BUZZ IN'}
+                </button>
+                <p className="buzzer-hint">
+                  {hasBuzzed
+                    ? 'Waiting for quiz master...'
+                    : 'Tap to buzz in when you know the answer!'}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="waiting-indicator">
+                  <div className="pulse"></div>
+                  <p>Waiting for next song...</p>
                 </div>
-              )}
-            </>
+                {isWinner && (
+                  <div className="winner-message">
+                    🎉 You got it right! 🎉
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            // MULTIPLE CHOICE MODE
+            currentRound && !currentRound.isComplete ? (
+              <>
+                <div className="mc-options-grid">
+                  {multipleChoiceOptions.map((option, index) => (
+                    <button
+                      key={index}
+                      className={`mc-option ${selectedAnswer === option ? 'selected' : ''} ${hasAnswered ? 'disabled' : ''}`}
+                      onClick={() => handleSelectAnswer(option)}
+                      disabled={hasAnswered}
+                    >
+                      <span className="option-letter">{String.fromCharCode(65 + index)}</span>
+                      <span className="option-text">{option}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mc-hint">
+                  {hasAnswered ? 'Answer submitted! Waiting for round to end...' : 'Select the correct song title'}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="waiting-indicator">
+                  <div className="pulse"></div>
+                  <p>Waiting for next song...</p>
+                </div>
+                {isWinner && (
+                  <div className="winner-message">
+                    🎉 You got it right! 🎉
+                  </div>
+                )}
+              </>
+            )
           )}
         </div>
 

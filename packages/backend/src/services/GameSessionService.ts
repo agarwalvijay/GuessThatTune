@@ -4,6 +4,7 @@ import {
   GameRound,
   Participant,
   BuzzerEvent,
+  MultipleChoiceAnswer,
   Song,
   CreateGameSessionRequest,
   DEFAULT_GAME_SETTINGS,
@@ -73,6 +74,11 @@ export class GameSessionService {
     const normalizedId = this.normalizeSessionId(sessionId);
     const session = this.sessions.get(normalizedId);
     if (!session) return undefined;
+
+    // Backward compatibility for sessions without gameMode
+    if (!session.settings.gameMode) {
+      session.settings.gameMode = 'buzzer';
+    }
 
     // Populate participants array with names
     const participants = session.participantIds.map(id => {
@@ -220,7 +226,46 @@ export class GameSessionService {
     session.rounds.push(round);
     session.currentRoundIndex = nextRoundIndex;
 
+    // Generate multiple choice options if in MC mode
+    if (session.settings.gameMode === 'multiple_choice') {
+      round.multipleChoiceOptions = this.generateMultipleChoiceOptions(song.id, session.songs);
+      round.multipleChoiceAnswers = [];
+    }
+
     return round;
+  }
+
+  /**
+   * Generate 4 multiple choice options (1 correct + 3 wrong)
+   * Returns shuffled array of song titles
+   */
+  private generateMultipleChoiceOptions(correctSongId: string, allSongs: Song[]): string[] {
+    const correctSong = allSongs.find(s => s.id === correctSongId);
+    if (!correctSong) return [];
+
+    const correctAnswer = correctSong.answer.title;
+    const otherSongs = allSongs.filter(s => s.id !== correctSongId);
+    const wrongAnswers: string[] = [];
+
+    // Get 3 unique wrong answers
+    while (wrongAnswers.length < 3 && otherSongs.length > 0) {
+      const randomIndex = Math.floor(Math.random() * otherSongs.length);
+      const wrongAnswer = otherSongs[randomIndex].answer.title;
+
+      if (!wrongAnswers.includes(wrongAnswer) && wrongAnswer !== correctAnswer) {
+        wrongAnswers.push(wrongAnswer);
+      }
+      otherSongs.splice(randomIndex, 1);
+    }
+
+    // Shuffle [correct, wrong1, wrong2, wrong3]
+    const options = [correctAnswer, ...wrongAnswers];
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [options[i], options[j]] = [options[j], options[i]];
+    }
+
+    return options;
   }
 
   /**
@@ -280,6 +325,84 @@ export class GameSessionService {
     currentRound.buzzerEvents.push(buzzerEvent);
 
     return buzzerEvent;
+  }
+
+  /**
+   * Handle multiple choice answer submission
+   * Returns answer object if valid, null otherwise
+   */
+  handleMultipleChoiceAnswer(
+    sessionId: string,
+    participantId: string,
+    selectedAnswer: string
+  ): MultipleChoiceAnswer | null {
+    const normalizedId = this.normalizeSessionId(sessionId);
+    const session = this.sessions.get(normalizedId);
+    const participant = this.participants.get(participantId);
+
+    if (!session || !participant) return null;
+    if (session.status !== 'playing') return null;
+    if (session.settings.gameMode !== 'multiple_choice') return null;
+
+    const currentRound = session.rounds[session.currentRoundIndex];
+    if (!currentRound || !currentRound.songStartTime) return null;
+
+    // Check if already answered
+    const alreadyAnswered = currentRound.multipleChoiceAnswers?.some(
+      a => a.participantId === participantId
+    );
+    if (alreadyAnswered) return null;
+
+    // Get correct answer
+    const song = session.songs.find(s => s.id === currentRound.songId);
+    if (!song) return null;
+
+    const correctAnswer = song.answer.title;
+    const isCorrect = selectedAnswer === correctAnswer;
+
+    // Calculate score
+    const now = Date.now();
+    const elapsedMs = now - currentRound.songStartTime;
+    const elapsedSeconds = elapsedMs / 1000;
+
+    let score = 0;
+    if (isCorrect) {
+      score = calculateScore(elapsedSeconds);
+
+      // First correct answer wins
+      if (!currentRound.winnerId) {
+        currentRound.winnerId = participantId;
+        currentRound.winnerScore = score;
+        currentRound.isComplete = true;
+      }
+    } else {
+      // Apply negative points
+      const potentialScore = calculateScore(elapsedSeconds);
+      const negativePercentage = session.settings.negativePointsPercentage || 25;
+      score = -Math.round((potentialScore * negativePercentage) / 100);
+    }
+
+    // Update participant score
+    session.scores[participantId] = (session.scores[participantId] || 0) + score;
+
+    // Create answer record
+    const answer: MultipleChoiceAnswer = {
+      id: randomUUID(),
+      participantId,
+      participantName: participant.name,
+      selectedAnswer,
+      elapsedSeconds,
+      score,
+      isCorrect,
+      answerTime: now,
+    };
+
+    if (!currentRound.multipleChoiceAnswers) {
+      currentRound.multipleChoiceAnswers = [];
+    }
+    currentRound.multipleChoiceAnswers.push(answer);
+
+    return answer;
   }
 
   /**

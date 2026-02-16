@@ -32,6 +32,17 @@ interface BuzzerEvent {
   isCorrect?: boolean;
 }
 
+interface MultipleChoiceAnswer {
+  id: string;
+  participantId: string;
+  participantName: string;
+  selectedAnswer: string;
+  elapsedSeconds: number;
+  score: number;
+  isCorrect: boolean;
+  answerTime: number;
+}
+
 interface GameSession {
   id: string;
   status: string;
@@ -42,12 +53,15 @@ interface GameSession {
     winnerId?: string;
     songStartOffset?: number;
     buzzerEvents?: BuzzerEvent[];
+    multipleChoiceOptions?: string[];
+    multipleChoiceAnswers?: MultipleChoiceAnswer[];
   }>;
   participantIds: string[];
   participants?: Array<{ id: string; name: string }>;
   scores: Record<string, number>;
   currentRoundIndex: number;
   settings: {
+    gameMode?: 'buzzer' | 'multiple_choice';
     songDuration: number;
     numberOfSongs: number;
   };
@@ -61,6 +75,7 @@ interface Playlist {
 }
 
 interface GameSettings {
+  gameMode: 'buzzer' | 'multiple_choice';
   songDuration: number;
   numberOfSongs: number;
   negativePointsPercentage: number;
@@ -98,6 +113,7 @@ export const useAppStore = create<AppState>((set) => ({
   songs: [],
   gameSession: null,
   gameSettings: {
+    gameMode: 'buzzer',
     songDuration: 30,
     numberOfSongs: 10,
     negativePointsPercentage: 25,
@@ -119,6 +135,7 @@ export const useAppStore = create<AppState>((set) => ({
     songs: [],
     gameSession: null,
     gameSettings: {
+      gameMode: 'buzzer',
       songDuration: 30,
       numberOfSongs: 10,
       negativePointsPercentage: 25,

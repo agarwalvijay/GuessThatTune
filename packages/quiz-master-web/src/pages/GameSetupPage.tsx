@@ -147,6 +147,7 @@ export function GameSetupPage() {
           playlistName: selectedPlaylist.name,
           songs: shuffledSongs,
           settings: {
+            gameMode: gameSettings.gameMode,
             songDuration,
             numberOfSongs: Math.min(numberOfSongs, shuffledSongs.length),
             negativePointsPercentage,
