@@ -253,7 +253,17 @@ export function GameSetupPage() {
           <div style={styles.qrCard}>
             {gameSession && (
               <>
-                <QRCodeSVG value={joinUrl} size={250} level="H" />
+                <QRCodeSVG
+                  value={joinUrl}
+                  size={250}
+                  level="H"
+                  imageSettings={{
+                    src: "/logo.png",
+                    height: 50,
+                    width: 50,
+                    excavate: true,
+                  }}
+                />
                 <p style={styles.joinUrl}>{joinUrl}</p>
               </>
             )}

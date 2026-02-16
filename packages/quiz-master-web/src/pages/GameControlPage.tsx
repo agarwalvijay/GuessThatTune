@@ -1267,6 +1267,13 @@ export function GameControlPage() {
               <QRCodeSVG
                 value={`${config.webAppUrl}/join/${gameSession.id}`}
                 size={180}
+                level="H"
+                imageSettings={{
+                  src: "/logo.png",
+                  height: 36,
+                  width: 36,
+                  excavate: true,
+                }}
               />
               <p style={styles.joinUrl}>
                 {config.webAppUrl}/join/{gameSession.id}
