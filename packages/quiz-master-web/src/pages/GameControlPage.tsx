@@ -1219,11 +1219,13 @@ export function GameControlPage() {
         )}
 
         {/* Multiple Choice Options Display */}
-        {gameSession?.settings?.gameMode === 'multiple_choice' && currentRound && !currentRound.isComplete && (
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Answer Choices</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
-              {currentRound.multipleChoiceOptions?.map((option, index) => (
+        {gameSession?.settings?.gameMode === 'multiple_choice' && (() => {
+          const currentRoundData = gameSession.rounds?.[gameSession.currentRoundIndex];
+          return currentRound && currentRoundData && !currentRoundData.isComplete && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Answer Choices</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                {currentRoundData.multipleChoiceOptions?.map((option: string, index: number) => (
                 <div
                   key={index}
                   style={{
@@ -1247,9 +1249,10 @@ export function GameControlPage() {
                   <span style={{ fontSize: '14px', color: '#333' }}>{option}</span>
                 </div>
               ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* QR Code Section */}
         <div style={styles.section}>
