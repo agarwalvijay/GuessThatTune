@@ -250,24 +250,35 @@ export function GameSetupPage() {
           </div>
         </div>
 
+        {/* Game Mode Toggle */}
+        <div style={styles.gameModeSection}>
+          <label style={styles.gameModeLabel}>Game Mode</label>
+          <div style={styles.gameModeButtons}>
+            <button
+              onClick={() => setCurrentGameMode('buzzer')}
+              style={{
+                ...styles.gameModeButton,
+                ...(currentGameMode === 'buzzer' ? styles.gameModeButtonActive : {}),
+              }}
+            >
+              🔔 Buzzer
+            </button>
+            <button
+              onClick={() => setCurrentGameMode('multiple_choice')}
+              style={{
+                ...styles.gameModeButton,
+                ...(currentGameMode === 'multiple_choice' ? styles.gameModeButtonActive : {}),
+              }}
+            >
+              📝 Multiple Choice
+            </button>
+          </div>
+        </div>
+
         <div style={styles.actions}>
           <button onClick={handleBack} style={styles.backButton}>
             Back
           </button>
-
-          {/* Game Mode Toggle */}
-          <div style={styles.gameModeToggle}>
-            <label style={styles.gameModeLabel}>Mode:</label>
-            <select
-              value={currentGameMode}
-              onChange={(e) => setCurrentGameMode(e.target.value as 'buzzer' | 'multiple_choice')}
-              style={styles.gameModeSelect}
-            >
-              <option value="buzzer">🔔 Buzzer</option>
-              <option value="multiple_choice">📝 Multiple Choice</option>
-            </select>
-          </div>
-
           <button onClick={handleStartGame} style={styles.button}>
             Start Game
           </button>
@@ -383,31 +394,47 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     padding: '20px',
   },
+  gameModeSection: {
+    marginBottom: '24px',
+    textAlign: 'center',
+  },
+  gameModeLabel: {
+    display: 'block',
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: '12px',
+  },
+  gameModeButtons: {
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  gameModeButton: {
+    flex: '1',
+    minWidth: '140px',
+    padding: '16px 24px',
+    border: '2px solid #ddd',
+    borderRadius: '12px',
+    backgroundColor: 'white',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: '600',
+    transition: 'all 0.2s',
+    color: '#333',
+  },
+  gameModeButtonActive: {
+    borderColor: '#1DB954',
+    backgroundColor: '#f0fdf4',
+    color: '#1DB954',
+  },
   actions: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: '16px',
     marginBottom: '32px',
-  },
-  gameModeToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  gameModeLabel: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#666',
-  },
-  gameModeSelect: {
-    padding: '8px 12px',
-    fontSize: '14px',
-    borderRadius: '8px',
-    border: '2px solid #ddd',
-    backgroundColor: 'white',
-    cursor: 'pointer',
-    fontWeight: '500',
   },
   button: {
     backgroundColor: '#1DB954',
