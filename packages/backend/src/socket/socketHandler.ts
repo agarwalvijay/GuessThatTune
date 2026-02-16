@@ -179,9 +179,14 @@ export function setupSocketHandlers(
           participantId,
         });
 
+        // Broadcast updated game state to quiz master
+        const session = gameSessionService.getSession(sessionId);
+        if (session) {
+          io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
+        }
+
         // If correct and first, broadcast round ended
         const currentRound = gameSessionService.getCurrentRound(sessionId);
-        const session = gameSessionService.getSession(sessionId);
 
         if (answer.isCorrect && currentRound?.winnerId === participantId && session) {
           const song = session.songs.find(s => s.id === currentRound.songId);
