@@ -177,6 +177,12 @@ export function GameSetupPage() {
     if (!gameSession) return;
 
     try {
+      // If game mode changed, recreate the session with new settings
+      if (currentGameMode !== gameSession.settings.gameMode) {
+        console.log('🔄 Game mode changed, updating session...');
+        await createGameSession();
+      }
+
       await apiService.startGameSession(gameSession.id);
 
       // Track game started
