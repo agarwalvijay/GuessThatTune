@@ -22,6 +22,7 @@ export function GameSetupPage() {
   const [error, setError] = useState<string | null>(null);
   const [hostName] = useState('Quiz Master');
   const [participants, setParticipants] = useState<Array<{ id: string; name: string }>>([]);
+  const [currentGameMode, setCurrentGameMode] = useState<'buzzer' | 'multiple_choice'>(gameSettings.gameMode || 'buzzer');
 
   // Use settings from store
   const { songDuration, numberOfSongs, negativePointsPercentage } = gameSettings;
@@ -147,7 +148,7 @@ export function GameSetupPage() {
           playlistName: selectedPlaylist.name,
           songs: shuffledSongs,
           settings: {
-            gameMode: gameSettings.gameMode,
+            gameMode: currentGameMode,
             songDuration,
             numberOfSongs: Math.min(numberOfSongs, shuffledSongs.length),
             negativePointsPercentage,
@@ -247,6 +248,20 @@ export function GameSetupPage() {
           <button onClick={handleBack} style={styles.backButton}>
             Back
           </button>
+
+          {/* Game Mode Toggle */}
+          <div style={styles.gameModeToggle}>
+            <label style={styles.gameModeLabel}>Mode:</label>
+            <select
+              value={currentGameMode}
+              onChange={(e) => setCurrentGameMode(e.target.value as 'buzzer' | 'multiple_choice')}
+              style={styles.gameModeSelect}
+            >
+              <option value="buzzer">🔔 Buzzer</option>
+              <option value="multiple_choice">📝 Multiple Choice</option>
+            </select>
+          </div>
+
           <button onClick={handleStartGame} style={styles.button}>
             Start Game
           </button>
@@ -365,8 +380,28 @@ const styles: Record<string, React.CSSProperties> = {
   actions: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'center',
     gap: '16px',
     marginBottom: '32px',
+  },
+  gameModeToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  gameModeLabel: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#666',
+  },
+  gameModeSelect: {
+    padding: '8px 12px',
+    fontSize: '14px',
+    borderRadius: '8px',
+    border: '2px solid #ddd',
+    backgroundColor: 'white',
+    cursor: 'pointer',
+    fontWeight: '500',
   },
   button: {
     backgroundColor: '#1DB954',

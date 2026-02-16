@@ -997,7 +997,9 @@ export function GameControlPage() {
                       }}
                     >
                       <span style={{ fontWeight: 'bold', flex: 1 }}>{answer.participantName}</span>
-                      <span style={{ fontSize: '14px', flex: 2, textAlign: 'center' }}>{answer.selectedAnswer}</span>
+                      <span style={{ fontSize: '14px', flex: 2, textAlign: 'center' }}>
+                        {answer.isCorrect || currentRoundData?.isComplete ? answer.selectedAnswer : '---'}
+                      </span>
                       <span
                         style={{
                           padding: '4px 8px',
@@ -1212,6 +1214,39 @@ export function GameControlPage() {
               <p style={styles.songAlbum}>
                 Album: {currentSong.metadata.album}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Multiple Choice Options Display */}
+        {gameSession?.settings?.gameMode === 'multiple_choice' && currentRound && !currentRound.isComplete && (
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>Answer Choices</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+              {currentRound.multipleChoiceOptions?.map((option, index) => (
+                <div
+                  key={index}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#f0f0f0',
+                    border: '2px solid #ddd',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <span style={{
+                    fontWeight: 'bold',
+                    fontSize: '18px',
+                    color: '#667eea',
+                    minWidth: '24px',
+                  }}>
+                    {String.fromCharCode(65 + index)}
+                  </span>
+                  <span style={{ fontSize: '14px', color: '#333' }}>{option}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
