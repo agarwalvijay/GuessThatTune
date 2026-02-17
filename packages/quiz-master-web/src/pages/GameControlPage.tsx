@@ -547,7 +547,6 @@ export function GameControlPage() {
 
       const uri = song.spotifyUri;
       const title = song.title || song.metadata?.title || 'Unknown';
-      const artist = song.artist || song.metadata?.artist || 'Unknown';
 
       addDebugLog(`🎵 Playing: ${title.substring(0, 30)}...`);
       await spotifyPlaybackService.playSong(uri, startPosition);
