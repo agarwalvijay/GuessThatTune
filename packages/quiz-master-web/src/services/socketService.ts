@@ -20,8 +20,7 @@ class SocketService {
     }
 
     this.socket = io(config.backendUrl, {
-      transports: ['websocket'],
-      upgrade: false,
+      transports: ['polling'],  // TEST: polling only to isolate WiFi WebSocket issue
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
