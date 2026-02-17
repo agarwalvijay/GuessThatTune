@@ -35,16 +35,20 @@ class SocketService {
       this.isConnected = true;
       this.hasConnectedBefore = true;
 
-      // Re-join session room after reconnect (new socket ID = lost room membership)
+      // Stagger post-connect actions to let the transport stabilize on mobile
       if (this.currentSessionId) {
-        console.log(`🔄 Re-joining session ${this.currentSessionId} after reconnect`);
-        this.socket?.emit('join_session_as_master', { sessionId: this.currentSessionId });
+        setTimeout(() => {
+          console.log(`🔄 Re-joining session ${this.currentSessionId}`);
+          this.socket?.emit('join_session_as_master', { sessionId: this.currentSessionId });
+        }, 200);
       }
 
       // Notify that a reconnect happened — Spotify device likely needs re-registration
       if (isReconnect && this.onReconnectCallback) {
-        console.log('🔄 Socket reconnected — triggering Spotify device recovery');
-        this.onReconnectCallback();
+        setTimeout(() => {
+          console.log('🔄 Socket reconnected — triggering Spotify device recovery');
+          this.onReconnectCallback?.();
+        }, 500);
       }
     });
 
