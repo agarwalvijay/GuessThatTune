@@ -400,17 +400,10 @@ class SpotifyPlaybackService {
         await (this.player as any).activateElement();
       }
 
-      // 2. Check SDK state - if null, device has lost focus in Spotify's backend.
-      //    Transfer playback to re-activate before issuing the play command.
-      //    If state exists, device is already active - skip transfer to avoid 5xx errors.
-      const currentState = await this.player?.getCurrentState();
-      if (!currentState) {
-        console.log('🔄 SDK state is null - re-activating device...');
-        await this.transferPlayback();
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } else {
-        console.log('✅ SDK has active state - skipping transfer');
-      }
+      // 2. No pre-play transfer check needed.
+      //    getCurrentState() returns LOCAL cached state, not backend active state,
+      //    so it can't reliably tell us if the device is active in Spotify's backend.
+      //    Instead: try to play, and if 404 (device inactive), transfer + retry below.
 
       // 3. Volume health check
       if (this.player) {
@@ -445,9 +438,12 @@ class SpotifyPlaybackService {
         console.error('❌ Playback error:', error);
 
         // Retry once on 404 or 5xx if this is the first attempt
+        // 404 = device not active in Spotify backend → re-activate via transferPlayback() then retry
+        // 5xx = transient server error → wait and retry
         if ((response.status === 404 || response.status >= 500) && retryCount === 0) {
-          console.log(`⏳ Playback error (${response.status}), waiting 2 seconds and retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log(`⏳ Playback error (${response.status}) - re-activating device and retrying...`);
+          await this.transferPlayback();
+          await new Promise(resolve => setTimeout(resolve, 1000));
           return this.playSong(trackUri, startPositionMs, retryCount + 1);
         }
 
