@@ -524,33 +524,44 @@ class SpotifyPlaybackService {
    * died at the same time, so the device may be de-registered.
    */
   async reestablishDevice(): Promise<void> {
-    if (!this.player || !this.accessToken) {
-      this.debugLog('⚠️ reestablishDevice: no player or token');
+    if (!this.accessToken) {
+      this.debugLog('⚠️ reestablishDevice: no access token');
       return;
     }
 
-    this.debugLog('🔄 WebSocket disruption detected — checking Spotify device...');
+    this.debugLog('🔄 WebSocket disruption — re-establishing Spotify device...');
 
-    // Check if our device still exists in Spotify's backend
-    const deviceId = await this.findOurDevice();
+    try {
+      // Check if our device still exists in Spotify's backend
+      const deviceId = await this.findOurDevice();
 
-    if (deviceId) {
-      // Device exists — update our ID if it changed and re-activate
-      if (deviceId !== this.deviceId) {
-        this.debugLog(`📱 Device ID changed: ${this.deviceId?.substring(0, 8)} → ${deviceId.substring(0, 8)}`);
-        this.deviceId = deviceId;
+      if (deviceId) {
+        // Device exists — update our ID if it changed and re-activate
+        if (deviceId !== this.deviceId) {
+          this.debugLog(`📱 Device ID changed: ${this.deviceId?.substring(0, 8)} → ${deviceId.substring(0, 8)}`);
+          this.deviceId = deviceId;
+        }
+        await this.transferPlayback();
+        this.debugLog('✅ Device re-established via transfer');
+        return;
       }
-      await this.transferPlayback();
-      this.debugLog('✅ Device re-established');
-    } else {
-      // Device gone — do a fast reinit to re-register
-      this.debugLog('❌ Device gone from Spotify — fast reinit...');
+
+      // Device gone — try fast reinit first
+      this.debugLog('❌ Device gone from Spotify — reinitializing...');
       try {
         await this.reinitializePlayerInline();
-        this.debugLog('✅ Device re-registered after reinit');
+        this.debugLog('✅ Device re-registered via fast reinit');
+        return;
       } catch (err: any) {
-        this.debugLog(`❌ Reinit failed: ${err.message || 'unknown'}`);
+        this.debugLog(`⚠️ Fast reinit failed: ${err.message || 'unknown'}, trying full init...`);
       }
+
+      // Last resort — full initialization from scratch
+      this.reset();
+      await this.initialize(this.accessToken!);
+      this.debugLog('✅ Device re-registered via full init');
+    } catch (err: any) {
+      this.debugLog(`❌ All recovery attempts failed: ${err.message || 'unknown'}`);
     }
   }
 
