@@ -90,38 +90,64 @@ export function GameControlPage() {
     let isSubscribed = true;
 
     const init = async () => {
+      console.log('🚀 Starting initialization...');
+
       // Initialize socket connection
       socketService.connect();
+      console.log('✅ Socket connected');
 
       // Check for playback conflicts BEFORE initializing player
+      console.log('🔍 Checking for playback conflicts...');
       const hasConflict = await checkForPlaybackConflict();
       if (hasConflict) {
+        console.log('⚠️ Conflict detected - showing modal, halting init');
         // Warning modal is shown, wait for user decision
         // Don't initialize player yet - will be done if user chooses "Take Over"
         return;
       }
+      console.log('✅ No conflicts detected');
 
       // Initialize Spotify player
-      await initializePlayer();
+      console.log('🎵 Initializing Spotify player...');
+      try {
+        await initializePlayer();
+      } catch (error) {
+        console.error('❌ Player initialization failed in init:', error);
+        return; // Stop initialization if player fails
+      }
 
       // Set up socket listeners
+      console.log('📡 Setting up socket listeners...');
       setupSocketListeners();
 
       // Fetch the latest session from the API to get the round data
+      console.log('📥 Fetching session data...');
       try {
         const updatedSession = await apiService.getGameSession(gameSession.id);
-        console.log('Fetched updated session:', updatedSession);
+        console.log('✅ Fetched updated session:', updatedSession);
 
         if (isSubscribed) {
           setGameSession(updatedSession);
+          console.log('✅ Session state updated:', {
+            status: updatedSession.status,
+            currentRoundIndex: updatedSession.currentRoundIndex,
+            totalRounds: updatedSession.rounds?.length,
+            totalSongs: updatedSession.songs?.length,
+          });
 
           // Check if game has already started and set initial round
           if (updatedSession.status === 'playing' && updatedSession.currentRoundIndex >= 0) {
             const round = updatedSession.rounds?.[updatedSession.currentRoundIndex];
             const song = updatedSession.songs?.[updatedSession.currentRoundIndex];
 
+            console.log('🎮 Game is playing, checking for current round:', {
+              hasRound: !!round,
+              hasSong: !!song,
+              roundIndex: updatedSession.currentRoundIndex,
+            });
+
             if (round && song) {
-              console.log('Setting initial round from updated session:', { round, song });
+              console.log('✅ Setting initial round from updated session');
               const roundData = {
                 roundIndex: updatedSession.currentRoundIndex,
                 song: song,
@@ -129,15 +155,23 @@ export function GameControlPage() {
               setCurrentRound(roundData);
               setScores(updatedSession.scores || {});
               setTimeRemaining(updatedSession.settings.songDuration);
+            } else {
+              console.warn('⚠️ Game is playing but round or song is missing!');
             }
+          } else {
+            console.log('ℹ️ Game not started yet (status:', updatedSession.status, ')');
           }
         }
       } catch (error) {
-        console.error('Error fetching game session:', error);
+        console.error('❌ Error fetching game session:', error);
+        alert('Failed to load game session. Please refresh and try again.');
       }
     };
 
-    init();
+    init().catch((error) => {
+      console.error('❌ Fatal error during initialization:', error);
+      alert(`Initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please refresh.`);
+    });
 
     return () => {
       isSubscribed = false;
@@ -162,14 +196,19 @@ export function GameControlPage() {
   }, []);
 
   const initializePlayer = async () => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      console.error('❌ No access token - cannot initialize player');
+      return;
+    }
 
     try {
+      console.log('🎵 Starting Spotify player initialization...');
       await spotifyPlaybackService.initialize(accessToken);
-      console.log('✅ Spotify playback service initialized');
+      console.log('✅ Spotify playback service initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize playback service:', error);
-      alert('Failed to initialize Spotify playback. Please refresh and try again.');
+      console.error('❌ Failed to initialize playback service:', error);
+      alert(`Failed to initialize Spotify playback: ${error instanceof Error ? error.message : 'Unknown error'}. Please refresh and try again.`);
+      throw error;
     }
   };
 
@@ -209,8 +248,14 @@ export function GameControlPage() {
 
   // Play song when we have a round
   useEffect(() => {
+    console.log('🎵 Round effect triggered:', {
+      hasCurrentRound: !!currentRound,
+      showAnswer,
+      roundIndex: currentRound?.roundIndex
+    });
+
     if (currentRound && !showAnswer) {
-      console.log('Round ready, starting playback');
+      console.log('✅ Round ready, starting playback');
       const isFirstRound = currentRound.roundIndex === 0;
 
       if (isFirstRound) {
@@ -540,34 +585,42 @@ export function GameControlPage() {
 
   const checkForPlaybackConflict = async (): Promise<boolean> => {
     if (!accessToken) {
-      console.log('🔍 Conflict check: No access token');
+      console.log('🔍 Conflict check: No access token - skipping');
       return false;
     }
 
     try {
-      console.log('🔍 Checking for playback conflicts...');
+      console.log('🔍 Fetching Spotify devices...');
       const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
 
       if (!response.ok) {
-        console.log('🔍 Conflict check: API request failed', response.status);
+        console.warn('⚠️ Conflict check: API request failed', response.status, '- assuming no conflict');
         return false;
       }
 
       const data = await response.json();
       const devices = data.devices || [];
+      console.log(`🔍 Found ${devices.length} Spotify device(s)`);
 
-      // Get our device ID
+      // Get our device ID (may be null if player not initialized yet)
       const ourDeviceId = (spotifyPlaybackService as any).deviceId;
 
-      console.log('🔍 Our device ID:', ourDeviceId);
+      console.log('🔍 Our device ID:', ourDeviceId || 'null (not initialized yet)');
       console.log('🔍 All devices:', devices.map((d: any) => ({
-        id: d.id,
+        id: d.id.substring(0, 8) + '...',
         name: d.name,
         is_active: d.is_active,
         type: d.type,
       })));
+
+      // IMPORTANT: If our player isn't initialized yet, we can't have a conflict
+      // This happens on page refresh - player will be created fresh
+      if (!ourDeviceId) {
+        console.log('✅ Player not initialized yet - no conflict possible');
+        return false;
+      }
 
       // Check for conflicts in two ways:
       // 1. Any OTHER device is currently active/playing
