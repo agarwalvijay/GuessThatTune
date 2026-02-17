@@ -47,6 +47,12 @@ export function GameControlPage() {
   const [conflictingDeviceName, setConflictingDeviceName] = useState<string>('');
   const [showDeviceTakenOverWarning, setShowDeviceTakenOverWarning] = useState(false);
 
+  // Debug panel state
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const logoTapCountRef = useRef(0);
+  const logoTapTimerRef = useRef<number | null>(null);
+
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
   const countdownTimerRef = useRef<number | null>(null);
@@ -54,6 +60,36 @@ export function GameControlPage() {
 
   // Keep screen awake during gameplay
   useWakeLock(true);
+
+  // Add debug log (visible on screen)
+  const addDebugLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logMessage = `[${timestamp}] ${message}`;
+    console.log(logMessage);
+    setDebugInfo(prev => [...prev.slice(-19), logMessage]); // Keep last 20 logs
+  };
+
+  // Handle logo tap for debug panel
+  const handleLogoTap = () => {
+    logoTapCountRef.current++;
+
+    // Clear existing timer
+    if (logoTapTimerRef.current) {
+      clearTimeout(logoTapTimerRef.current);
+    }
+
+    // Reset tap count after 2 seconds
+    logoTapTimerRef.current = window.setTimeout(() => {
+      logoTapCountRef.current = 0;
+    }, 2000);
+
+    // Toggle debug panel after 5 taps
+    if (logoTapCountRef.current >= 5) {
+      setShowDebugPanel(prev => !prev);
+      logoTapCountRef.current = 0;
+      addDebugLog(showDebugPanel ? 'Debug panel hidden' : 'Debug panel shown');
+    }
+  };
 
   // Sync refs with state
   useEffect(() => {
@@ -68,6 +104,7 @@ export function GameControlPage() {
   useEffect(() => {
     spotifyPlaybackService.onDeviceTakenOver(() => {
       console.log('⚠️ Device taken over detected in GameControlPage');
+      addDebugLog('⚠️ Device taken over!');
       setShowDeviceTakenOverWarning(true);
       // Pause playback since we no longer control it
       setIsPlaying(false);
@@ -77,6 +114,34 @@ export function GameControlPage() {
       spotifyPlaybackService.clearDeviceTakenOverCallback();
     };
   }, []);
+
+  // Periodically log player state when debug panel is shown
+  useEffect(() => {
+    if (!showDebugPanel) return;
+
+    const checkPlayerState = async () => {
+      const volume = await spotifyPlaybackService.getVolume();
+      const state = await spotifyPlaybackService.getCurrentState();
+
+      if (volume !== null) {
+        addDebugLog(`🔊 Volume: ${volume}%`);
+      }
+
+      if (state) {
+        addDebugLog(`📊 Position: ${Math.floor(state.position / 1000)}s, Paused: ${state.paused}`);
+      } else {
+        addDebugLog(`⚠️ No playback state`);
+      }
+    };
+
+    // Check immediately
+    checkPlayerState();
+
+    // Then check every 3 seconds
+    const interval = setInterval(checkPlayerState, 3000);
+
+    return () => clearInterval(interval);
+  }, [showDebugPanel]);
 
   useEffect(() => {
     console.log('GameControlPage mounted', { accessToken: !!accessToken, gameSession });
@@ -255,12 +320,12 @@ export function GameControlPage() {
     });
 
     if (currentRound && !showAnswer) {
-      console.log('✅ Round ready, starting playback');
+      addDebugLog(`Round ${currentRound.roundIndex + 1} ready`);
       const isFirstRound = currentRound.roundIndex === 0;
 
       if (isFirstRound) {
         // First round: Load song with auto-pause (user will click START to resume)
-        console.log('🎵 First round - loading song. User must click START.');
+        addDebugLog('First round - loading...');
         setIsPlaying(false);
         setShowStartOverlay(true);
         setFirstRoundSongLoaded(false);
@@ -271,10 +336,11 @@ export function GameControlPage() {
         // Load song and mark as loaded when complete
         playSong(currentRound.song).then(() => {
           setFirstRoundSongLoaded(true);
-          console.log('✅ First round song loaded, START button enabled');
+          addDebugLog('✅ First round loaded');
         });
       } else {
         // Subsequent rounds: auto-play (audio already unlocked from first round)
+        addDebugLog(`Auto-playing round ${currentRound.roundIndex + 1}`);
         playSong(currentRound.song);
         setIsPlaying(true);
       }
@@ -474,13 +540,15 @@ export function GameControlPage() {
       const title = song.title || song.metadata?.title || 'Unknown';
       const artist = song.artist || song.metadata?.artist || 'Unknown';
 
-      console.log(`🎵 Playing: ${title} by ${artist}`);
+      addDebugLog(`🎵 Playing: ${title.substring(0, 30)}...`);
       await spotifyPlaybackService.playSong(uri, startPosition);
+      addDebugLog(`✅ Playback started`);
 
       // For autoPause, the continuous pause loop in useEffect will handle it
     } catch (error: any) {
-      console.error('Error playing song:', error);
       const errorMessage = error.message || 'Failed to play song';
+      addDebugLog(`❌ Playback error: ${errorMessage}`);
+      console.error('Error playing song:', error);
       if (errorMessage.includes('No Spotify devices found')) {
         alert('Please open Spotify on your phone or computer first, then try again.');
       }
@@ -1015,7 +1083,12 @@ export function GameControlPage() {
 
       <div style={styles.content}>
         <div style={styles.header}>
-          <img src="/logo.png" alt="Hear and Guess" style={styles.headerLogo} />
+          <img
+            src="/logo.png"
+            alt="Hear and Guess"
+            style={styles.headerLogo}
+            onClick={handleLogoTap}
+          />
           <h1 style={styles.appTitle}>Hear and Guess</h1>
           <div style={styles.gameModeIndicator}>
             {gameSession?.settings?.gameMode === 'multiple_choice' ? '📝' : '🔔'}
@@ -1341,6 +1414,48 @@ export function GameControlPage() {
         <div style={styles.countdownOverlay} key={countdown}>
           <div style={styles.countdownNumber}>
             {countdown}
+          </div>
+        </div>
+      )}
+
+      {/* Debug Panel - Toggle by tapping logo 5 times */}
+      {showDebugPanel && (
+        <div style={styles.debugPanel}>
+          <div style={styles.debugHeader}>
+            <span style={styles.debugTitle}>🔧 Debug Info</span>
+            <button
+              onClick={() => setShowDebugPanel(false)}
+              style={styles.debugCloseButton}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={styles.debugContent}>
+            <div style={styles.debugSection}>
+              <strong>Player Status:</strong> {spotifyPlaybackService.isReady() ? '✅ Ready' : '❌ Not Ready'}
+            </div>
+            <div style={styles.debugSection}>
+              <strong>Playing:</strong> {isPlaying ? '▶️ Yes' : '⏸️ No'}
+            </div>
+            <div style={styles.debugSection}>
+              <strong>Round:</strong> {currentRound ? `${currentRound.roundIndex + 1}` : 'None'}
+            </div>
+            <div style={styles.debugSection}>
+              <strong>Session:</strong> {gameSession?.id || 'None'}
+            </div>
+            <div style={styles.debugDivider} />
+            <div style={styles.debugLogsTitle}>Recent Logs:</div>
+            <div style={styles.debugLogs}>
+              {debugInfo.length === 0 ? (
+                <div style={styles.debugLogEmpty}>No logs yet</div>
+              ) : (
+                debugInfo.map((log, i) => (
+                  <div key={i} style={styles.debugLogItem}>
+                    {log}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1860,5 +1975,85 @@ const styles: Record<string, React.CSSProperties> = {
     textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
     animation: 'countdownZoom 1s ease-out',
     userSelect: 'none' as const,
+  },
+  debugPanel: {
+    position: 'fixed' as const,
+    bottom: '20px',
+    right: '20px',
+    width: '90%',
+    maxWidth: '400px',
+    maxHeight: '500px',
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    borderRadius: '12px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+    zIndex: 10000,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    overflow: 'hidden',
+  },
+  debugHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '12px 16px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  debugTitle: {
+    color: 'white',
+    fontSize: '16px',
+    fontWeight: '600',
+  },
+  debugCloseButton: {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: 'white',
+    fontSize: '24px',
+    cursor: 'pointer',
+    padding: '0',
+    lineHeight: '1',
+  },
+  debugContent: {
+    padding: '16px',
+    overflowY: 'auto' as const,
+    flex: 1,
+  },
+  debugSection: {
+    color: 'white',
+    fontSize: '13px',
+    marginBottom: '8px',
+    fontFamily: 'monospace',
+  },
+  debugDivider: {
+    height: '1px',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    margin: '12px 0',
+  },
+  debugLogsTitle: {
+    color: 'white',
+    fontSize: '14px',
+    fontWeight: '600',
+    marginBottom: '8px',
+  },
+  debugLogs: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: '6px',
+    padding: '8px',
+    maxHeight: '250px',
+    overflowY: 'auto' as const,
+  },
+  debugLogItem: {
+    color: '#00ff00',
+    fontSize: '11px',
+    fontFamily: 'monospace',
+    marginBottom: '4px',
+    wordBreak: 'break-word' as const,
+  },
+  debugLogEmpty: {
+    color: '#888',
+    fontSize: '12px',
+    fontStyle: 'italic',
+    textAlign: 'center' as const,
+    padding: '20px',
   },
 };
