@@ -296,7 +296,7 @@ export function setupSocketHandlers(
     /**
      * Handle disconnection
      */
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
       try {
         const participantId = socket.data.participantId;
         const sessionId = socket.data.sessionId;
@@ -314,7 +314,7 @@ export function setupSocketHandlers(
           console.log(`Participant ${participantId} disconnected from session ${sessionId}`);
         }
 
-        console.log(`${new Date().toISOString()} Client disconnected: ${socket.id}`);
+        console.log(`${new Date().toISOString()} Client disconnected: ${socket.id} reason: ${reason}`);
       } catch (error) {
         console.error('Error in disconnect:', error);
       }
