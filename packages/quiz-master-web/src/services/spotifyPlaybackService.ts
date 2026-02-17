@@ -348,6 +348,44 @@ class SpotifyPlaybackService {
   }
 
   /**
+   * Find our Web Player device in Spotify's backend.
+   * Returns the device ID if found, null otherwise.
+   * This queries the ACTUAL backend state, not our local cache.
+   */
+  private async findOurDevice(): Promise<string | null> {
+    if (!this.accessToken) return null;
+
+    try {
+      const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+        },
+      });
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      const devices = data.devices || [];
+
+      // Look for our device by name
+      const ourDevice = devices.find((d: any) =>
+        d.name === 'Hear and Guess Web Player'
+      );
+
+      if (ourDevice) {
+        console.log('🔍 Found our device:', ourDevice.id.substring(0, 8) + '...', 'active:', ourDevice.is_active);
+        return ourDevice.id;
+      }
+
+      console.log('🔍 Our device not found among', devices.length, 'device(s):', devices.map((d: any) => d.name).join(', ') || 'none');
+      return null;
+    } catch (error) {
+      console.warn('⚠️ Error finding our device:', error);
+      return null;
+    }
+  }
+
+  /**
    * Transfer playback to this device (activate it)
    */
   private async transferPlayback(): Promise<void> {
@@ -437,17 +475,38 @@ class SpotifyPlaybackService {
         const error = await response.json();
         console.error('❌ Playback error:', error);
 
-        // Retry once on 404 or 5xx if this is the first attempt
-        // 404 = device not active in Spotify backend → re-activate via transferPlayback() then retry
-        // 5xx = transient server error → wait and retry
-        if ((response.status === 404 || response.status >= 500) && retryCount === 0) {
-          console.log(`⏳ Playback error (${response.status}) - re-activating device and retrying...`);
-          await this.transferPlayback();
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        // On 404: device is gone from Spotify's backend.
+        // Query the actual device list to find our device (may have reconnected with new ID).
+        if (response.status === 404 && retryCount === 0) {
+          console.log('⏳ Device not found (404) - querying Spotify for our actual device...');
+
+          const actualDeviceId = await this.findOurDevice();
+
+          if (actualDeviceId) {
+            // Device exists in backend (possibly with new ID after SDK reconnect)
+            if (actualDeviceId !== this.deviceId) {
+              console.log(`🔄 Device ID changed: ${this.deviceId?.substring(0, 8)}... → ${actualDeviceId.substring(0, 8)}...`);
+            }
+            this.deviceId = actualDeviceId;
+            await this.transferPlayback();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return this.playSong(trackUri, startPositionMs, retryCount + 1);
+          }
+
+          // Device truly gone from backend - skip useless retry, go straight to reinit
+          console.error('❌ Device not found in Spotify backend. Needs full reinit.');
+          this.reset();
+          throw new Error('Spotify player device not working. Please try starting the round again - a new device will be created automatically.');
+        }
+
+        // On 5xx: transient server error, device likely still exists - just wait and retry
+        if (response.status >= 500 && retryCount === 0) {
+          console.log(`⏳ Server error (${response.status}), waiting 2s and retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
           return this.playSong(trackUri, startPositionMs, retryCount + 1);
         }
 
-        // After 2 failures, reset player so next initialize() will recreate it
+        // Safety net: if retry also fails with 404, reset for full reinit
         if (response.status === 404 && retryCount === 1) {
           console.error('❌ Device still not found after retry. Resetting player...');
           this.reset();
