@@ -25,6 +25,9 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
     methods: ['GET', 'POST'],
     credentials: true,
   },
+  // Aggressive keep-alive for mobile browsers (Samsung/Android kill idle WebSockets)
+  pingInterval: 10000,  // Ping every 10s (default 25s is too long for mobile)
+  pingTimeout: 5000,    // 5s timeout (default 20s)
 });
 
 // Middleware
