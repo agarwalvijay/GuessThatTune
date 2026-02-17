@@ -124,33 +124,42 @@ export function GameControlPage() {
     };
   }, []);
 
-  // Periodically log player state when debug panel is shown
+  // Periodically check player health (always running, not just when debug panel shown)
   useEffect(() => {
-    if (!showDebugPanel) return;
+    const checkPlayerHealth = async () => {
+      const isReady = spotifyPlaybackService.isReady();
 
-    const checkPlayerState = async () => {
-      const volume = await spotifyPlaybackService.getVolume();
-      const state = await spotifyPlaybackService.getCurrentState();
+      // Log to debug panel if shown
+      if (showDebugPanel) {
+        const volume = await spotifyPlaybackService.getVolume();
+        const state = await spotifyPlaybackService.getCurrentState();
 
-      if (volume !== null) {
-        addDebugLog(`🔊 Volume: ${volume}%`);
+        if (volume !== null) {
+          addDebugLog(`🔊 Volume: ${volume}%`);
+        }
+
+        if (state) {
+          addDebugLog(`📊 Position: ${Math.floor(state.position / 1000)}s, Paused: ${state.paused}`);
+        } else {
+          addDebugLog(`⚠️ No playback state`);
+        }
       }
 
-      if (state) {
-        addDebugLog(`📊 Position: ${Math.floor(state.position / 1000)}s, Paused: ${state.paused}`);
-      } else {
-        addDebugLog(`⚠️ No playback state`);
+      // Alert if player becomes not ready during gameplay
+      if (!isReady && gameSession?.status === 'playing') {
+        console.warn('⚠️ Player became not ready during gameplay');
+        addDebugLog(`⚠️ Player disconnected!`);
       }
     };
 
     // Check immediately
-    checkPlayerState();
+    checkPlayerHealth();
 
-    // Then check every 3 seconds
-    const interval = setInterval(checkPlayerState, 3000);
+    // Then check every 5 seconds
+    const interval = setInterval(checkPlayerHealth, 5000);
 
     return () => clearInterval(interval);
-  }, [showDebugPanel]);
+  }, [showDebugPanel, gameSession?.status]);
 
   useEffect(() => {
     console.log('GameControlPage mounted', { accessToken: !!accessToken, gameSession });
@@ -540,6 +549,17 @@ export function GameControlPage() {
 
   const playSong = async (song: any) => {
     try {
+      // Check if player is ready, reinitialize if not
+      if (!spotifyPlaybackService.isReady()) {
+        addDebugLog(`⚠️ Player not ready, reinitializing...`);
+        if (!accessToken) {
+          addDebugLog(`❌ No access token for reinitialization`);
+          throw new Error('No access token available');
+        }
+        await spotifyPlaybackService.initialize(accessToken);
+        addDebugLog(`✅ Player reinitialized`);
+      }
+
       // Random start position (avoiding the very end of the song)
       const durationMs = song.durationMs || (song.metadata?.duration * 1000) || 180000;
       const maxStart = Math.max(0, durationMs - 30000);
