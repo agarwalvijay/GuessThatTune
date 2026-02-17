@@ -39,13 +39,6 @@ echo ""
 
 echo -e "${YELLOW}=== Step 3: Creating nginx configuration ===${NC}"
 sudo tee /etc/nginx/sites-available/songgame > /dev/null << 'NGINX_EOF'
-# Conditional Connection header for WebSocket upgrade (Socket.IO best practice)
-# Only sends "upgrade" when client requests it, sends "close" for regular HTTP polling
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-
 # HTTP server - redirect to HTTPS
 server {
     listen 80;
@@ -98,7 +91,7 @@ server {
         proxy_pass http://localhost:4000/socket.io/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -148,7 +141,7 @@ server {
         proxy_pass http://localhost:4000/socket.io/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
