@@ -348,6 +348,58 @@ class SpotifyPlaybackService {
   }
 
   /**
+   * Fast player reinitialization for inline recovery during playback.
+   * Skips the 2s delay and device verification for speed.
+   * Only used when we KNOW the device is gone (404 from play API).
+   */
+  private async reinitializePlayerInline(): Promise<void> {
+    console.log('🔄 Fast reinitializing player (inline recovery)...');
+
+    if (this.player) {
+      this.player.disconnect();
+    }
+    this.player = null;
+    this.deviceId = null;
+
+    if (!this.accessToken || !window.Spotify) {
+      throw new Error('Cannot reinitialize - missing token or SDK');
+    }
+
+    this.player = new window.Spotify.Player({
+      name: 'Hear and Guess Web Player',
+      getOAuthToken: (cb: (token: string) => void) => {
+        if (this.accessToken) cb(this.accessToken);
+      },
+      volume: 0.5,
+    });
+
+    this.setupPlayerListeners();
+
+    const connected = await this.player.connect();
+    if (!connected) {
+      throw new Error('Failed to connect player during recovery');
+    }
+
+    // Wait for ready event with 10s timeout, then just 500ms for propagation
+    // (skips the normal 2s delay + verification for speed)
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout waiting for device during recovery'));
+      }, 10000);
+
+      const check = setInterval(() => {
+        if (this.deviceId) {
+          clearInterval(check);
+          clearTimeout(timeout);
+          setTimeout(() => resolve(), 500);
+        }
+      }, 100);
+    });
+
+    console.log('✅ Fast reinit complete, device:', String(this.deviceId).substring(0, 8) + '...');
+  }
+
+  /**
    * Find our Web Player device in Spotify's backend.
    * Returns the device ID if found, null otherwise.
    * This queries the ACTUAL backend state, not our local cache.
@@ -476,14 +528,13 @@ class SpotifyPlaybackService {
         console.error('❌ Playback error:', error);
 
         // On 404: device is gone from Spotify's backend.
-        // Query the actual device list to find our device (may have reconnected with new ID).
         if (response.status === 404 && retryCount === 0) {
-          console.log('⏳ Device not found (404) - querying Spotify for our actual device...');
+          console.log('⏳ Device not found (404) - attempting recovery...');
 
+          // Step 1: Check if device exists with a different ID (SDK may have reconnected)
           const actualDeviceId = await this.findOurDevice();
 
           if (actualDeviceId) {
-            // Device exists in backend (possibly with new ID after SDK reconnect)
             if (actualDeviceId !== this.deviceId) {
               console.log(`🔄 Device ID changed: ${this.deviceId?.substring(0, 8)}... → ${actualDeviceId.substring(0, 8)}...`);
             }
@@ -493,10 +544,16 @@ class SpotifyPlaybackService {
             return this.playSong(trackUri, startPositionMs, retryCount + 1);
           }
 
-          // Device truly gone from backend - skip useless retry, go straight to reinit
-          console.error('❌ Device not found in Spotify backend. Needs full reinit.');
-          this.reset();
-          throw new Error('Spotify player device not working. Please try starting the round again - a new device will be created automatically.');
+          // Step 2: Device truly gone - fast reinit inline (no throw, handle it here)
+          try {
+            await this.reinitializePlayerInline();
+            // Retry with the new device
+            return this.playSong(trackUri, startPositionMs, retryCount + 1);
+          } catch (reinitError) {
+            console.error('❌ Inline reinit failed:', reinitError);
+            this.reset();
+            throw new Error('Spotify player device not working. Please try starting the round again - a new device will be created automatically.');
+          }
         }
 
         // On 5xx: transient server error, device likely still exists - just wait and retry
@@ -506,9 +563,9 @@ class SpotifyPlaybackService {
           return this.playSong(trackUri, startPositionMs, retryCount + 1);
         }
 
-        // Safety net: if retry also fails with 404, reset for full reinit
+        // Safety net: if retry after recovery still fails
         if (response.status === 404 && retryCount === 1) {
-          console.error('❌ Device still not found after retry. Resetting player...');
+          console.error('❌ Play still failing after recovery.');
           this.reset();
           throw new Error('Spotify player device not working. Please try starting the round again - a new device will be created automatically.');
         }
