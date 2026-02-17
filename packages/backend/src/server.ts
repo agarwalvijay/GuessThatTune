@@ -25,9 +25,9 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
     methods: ['GET', 'POST'],
     credentials: true,
   },
-  // Mobile-friendly keep-alive (default 25s/20s)
-  pingInterval: 15000,  // Ping every 15s
-  pingTimeout: 30000,   // 30s timeout - generous for mobile network latency
+  // Frequent pings to keep connection alive, generous timeout for mobile latency
+  pingInterval: 5000,   // Ping every 5s - keeps WebSocket active on mobile
+  pingTimeout: 30000,   // 30s timeout - won't disconnect on brief latency spikes
 });
 
 // Middleware
