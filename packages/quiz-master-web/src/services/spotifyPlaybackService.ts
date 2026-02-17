@@ -300,6 +300,8 @@ class SpotifyPlaybackService {
       console.log('❌ Device ID has gone offline:', device_id);
       console.log('⚠️ Playback may have been taken over by another device');
       this.isDeviceActive = false;
+      // Clear deviceId so isReady() returns false and triggers reinit
+      this.deviceId = null;
 
       // Notify the app that this device was taken over
       if (this.onDeviceTakenOverCallback) {
