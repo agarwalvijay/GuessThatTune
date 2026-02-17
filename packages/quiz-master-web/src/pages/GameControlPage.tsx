@@ -153,20 +153,6 @@ export function GameControlPage() {
     }
   };
 
-  // The onDeviceTakenOver callback is no longer triggered for normal between-round
-  // disconnects (the SDK self-heals those). It's only used if we explicitly call it
-  // after a timeout, so we keep the handler simple.
-  useEffect(() => {
-    spotifyPlaybackService.onDeviceTakenOver(() => {
-      addDebugLog('⚠️ Device taken over by another Spotify client');
-      setIsPlaying(false);
-      setShowDeviceTakenOverWarning(true);
-    });
-
-    return () => {
-      spotifyPlaybackService.clearDeviceTakenOverCallback();
-    };
-  }, []);
 
   // Periodically check player health (always running, not just when debug panel shown)
   useEffect(() => {

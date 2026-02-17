@@ -73,8 +73,6 @@ class SpotifyPlaybackService {
   private deviceId: string | null = null;
   private sdkReady: boolean = false;
   private maxInitializationAttempts: number = 3;
-  private onDeviceTakenOverCallback: (() => void) | null = null;
-  private isDeviceActive: boolean = false;
 
   /**
    * Initialize the playback service with access token
@@ -300,7 +298,6 @@ class SpotifyPlaybackService {
     // Do NOT clear deviceId or disconnect the player - let the SDK self-heal
     this.player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
       console.log('⚠️ Device temporarily offline:', device_id, '- SDK will auto-reconnect');
-      this.isDeviceActive = false;
       // Note: we intentionally keep deviceId so isReady() stays true during brief offline periods
       // The 'ready' event will update deviceId if it changes on reconnect
     });
@@ -464,7 +461,6 @@ class SpotifyPlaybackService {
       }
 
       console.log('✅ Playback started successfully');
-      this.isDeviceActive = true;
 
       // 4. Quick verification at 300ms - if SDK is stuck in paused state, force resume
       setTimeout(async () => {
@@ -588,7 +584,6 @@ class SpotifyPlaybackService {
     }
     this.player = null;
     this.deviceId = null;
-    this.isDeviceActive = false;
   }
 
   /**
@@ -600,8 +595,7 @@ class SpotifyPlaybackService {
       this.player.disconnect();
       this.player = null;
       this.deviceId = null;
-      this.isDeviceActive = false;
-    }
+      }
   }
 
   /**
@@ -611,19 +605,6 @@ class SpotifyPlaybackService {
     return this.player !== null && this.deviceId !== null;
   }
 
-  /**
-   * Set callback for when device is taken over by another device
-   */
-  onDeviceTakenOver(callback: () => void): void {
-    this.onDeviceTakenOverCallback = callback;
-  }
-
-  /**
-   * Clear the device taken over callback
-   */
-  clearDeviceTakenOverCallback(): void {
-    this.onDeviceTakenOverCallback = null;
-  }
 }
 
 export const spotifyPlaybackService = new SpotifyPlaybackService();
