@@ -73,6 +73,23 @@ class SpotifyPlaybackService {
   private deviceId: string | null = null;
   private sdkReady: boolean = false;
   private maxInitializationAttempts: number = 3;
+  private onDebugLog: ((msg: string) => void) | null = null;
+  private keepAliveInterval: number | null = null;
+
+  /**
+   * Set a callback to receive debug logs (shown in on-screen debug panel)
+   */
+  setDebugCallback(cb: ((msg: string) => void) | null): void {
+    this.onDebugLog = cb;
+  }
+
+  /**
+   * Log to both console and debug panel
+   */
+  private debugLog(msg: string): void {
+    console.log(msg);
+    if (this.onDebugLog) this.onDebugLog(msg);
+  }
 
   /**
    * Initialize the playback service with access token
@@ -93,6 +110,9 @@ class SpotifyPlaybackService {
 
     // Initialize the player with retry logic
     await this.initializePlayerWithRetry();
+
+    // Start keep-alive: periodically touch the SDK to prevent idle disconnection
+    this.startKeepAlive();
   }
 
   /**
@@ -289,17 +309,14 @@ class SpotifyPlaybackService {
 
     // Ready event - player is ready to use
     this.player.addListener('ready', ({ device_id }: { device_id: string }) => {
-      console.log('🎵 Ready with Device ID:', device_id);
+      this.debugLog(`✅ SDK ready, device: ${device_id.substring(0, 8)}...`);
       this.deviceId = device_id;
     });
 
     // Not Ready event - device has gone offline temporarily
-    // The SDK will automatically reconnect and fire 'ready' again with the same/new device ID
-    // Do NOT clear deviceId or disconnect the player - let the SDK self-heal
     this.player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
-      console.log('⚠️ Device temporarily offline:', device_id, '- SDK will auto-reconnect');
-      // Note: we intentionally keep deviceId so isReady() stays true during brief offline periods
-      // The 'ready' event will update deviceId if it changes on reconnect
+      this.debugLog(`⚠️ SDK not_ready: ${device_id.substring(0, 8)}... - waiting for auto-reconnect`);
+      // Don't clear deviceId - let SDK self-heal. ready event will update if ID changes.
     });
 
     // Player state changed
@@ -348,12 +365,37 @@ class SpotifyPlaybackService {
   }
 
   /**
+   * Keep the SDK connection alive by periodically making a lightweight SDK call.
+   * Mobile browsers (especially Samsung) aggressively kill idle WebSocket connections.
+   */
+  private startKeepAlive(): void {
+    this.stopKeepAlive();
+    this.keepAliveInterval = window.setInterval(async () => {
+      if (this.player) {
+        try {
+          await this.player.getVolume(); // Lightweight SDK call via WebSocket
+        } catch {
+          // Ignore - just a keep-alive ping
+        }
+      }
+    }, 10000); // Every 10 seconds
+  }
+
+  private stopKeepAlive(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+  }
+
+  /**
    * Fast player reinitialization for inline recovery during playback.
    * Skips the 2s delay and device verification for speed.
    * Only used when we KNOW the device is gone (404 from play API).
    */
   private async reinitializePlayerInline(): Promise<void> {
-    console.log('🔄 Fast reinitializing player (inline recovery)...');
+    this.debugLog('🔄 Fast reinit: creating new player...');
+    this.stopKeepAlive();
 
     if (this.player) {
       this.player.disconnect();
@@ -396,7 +438,8 @@ class SpotifyPlaybackService {
       }, 100);
     });
 
-    console.log('✅ Fast reinit complete, device:', String(this.deviceId).substring(0, 8) + '...');
+    this.debugLog('✅ Fast reinit complete: ' + String(this.deviceId).substring(0, 8) + '...');
+    this.startKeepAlive();
   }
 
   /**
@@ -484,28 +527,35 @@ class SpotifyPlaybackService {
 
     try {
       // 1. Re-grab hardware focus via activateElement (if available)
-      //    This is especially important on mobile browsers that lose audio focus
       if (this.player && typeof (this.player as any).activateElement === 'function') {
-        console.log('🎯 Activating element to grab audio focus...');
         await (this.player as any).activateElement();
       }
 
-      // 2. No pre-play transfer check needed.
-      //    getCurrentState() returns LOCAL cached state, not backend active state,
-      //    so it can't reliably tell us if the device is active in Spotify's backend.
-      //    Instead: try to play, and if 404 (device inactive), transfer + retry below.
+      // 2. Pre-play diagnostic: check if our device exists in Spotify's backend
+      if (retryCount === 0) {
+        const preCheckId = await this.findOurDevice();
+        if (preCheckId) {
+          this.debugLog(`📱 Pre-play: device ${preCheckId === this.deviceId ? 'MATCH' : 'ID CHANGED!'}`);
+          if (preCheckId !== this.deviceId) {
+            this.debugLog(`🔄 Updating device ID: ${this.deviceId?.substring(0, 8)}→${preCheckId.substring(0, 8)}`);
+            this.deviceId = preCheckId;
+          }
+          // Ensure device is active
+          await this.transferPlayback();
+        } else {
+          this.debugLog(`📱 Pre-play: device NOT FOUND in backend! Will reinit on failure.`);
+        }
+      }
 
       // 3. Volume health check
       if (this.player) {
         const volume = await this.player.getVolume();
         if (volume === 0) {
-          console.warn('⚠️ Volume is 0, restoring to 0.5');
           await this.player.setVolume(0.5);
         }
       }
 
-      console.log(`🎵 Playing track (attempt ${retryCount + 1}/2):`, trackUri);
-      console.log('📊 Start position:', Math.floor(startPositionMs / 1000), 'seconds');
+      this.debugLog(`🎵 Play attempt ${retryCount + 1}, device: ${this.deviceId?.substring(0, 8)}...`);
 
       // Use Spotify Connect API to start playback on our Web Player device
       const response = await fetch(
@@ -524,35 +574,23 @@ class SpotifyPlaybackService {
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        console.error('❌ Playback error:', error);
+        const errorBody = await response.json().catch(() => ({}));
+        const errorMsg = errorBody.error?.message || errorBody.error?.reason || 'Unknown';
+        this.debugLog(`❌ Play API ${response.status}: ${errorMsg}`);
 
         // On 404: device is gone from Spotify's backend.
         if (response.status === 404 && retryCount === 0) {
-          console.log('⏳ Device not found (404) - attempting recovery...');
+          this.debugLog('🔄 404 recovery: fast reinit...');
 
-          // Step 1: Check if device exists with a different ID (SDK may have reconnected)
-          const actualDeviceId = await this.findOurDevice();
-
-          if (actualDeviceId) {
-            if (actualDeviceId !== this.deviceId) {
-              console.log(`🔄 Device ID changed: ${this.deviceId?.substring(0, 8)}... → ${actualDeviceId.substring(0, 8)}...`);
-            }
-            this.deviceId = actualDeviceId;
-            await this.transferPlayback();
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return this.playSong(trackUri, startPositionMs, retryCount + 1);
-          }
-
-          // Step 2: Device truly gone - fast reinit inline (no throw, handle it here)
+          // Fast reinit: create new player and device
           try {
             await this.reinitializePlayerInline();
-            // Retry with the new device
+            this.debugLog(`✅ New device: ${String(this.deviceId).substring(0, 8)}...`);
             return this.playSong(trackUri, startPositionMs, retryCount + 1);
-          } catch (reinitError) {
-            console.error('❌ Inline reinit failed:', reinitError);
+          } catch (reinitError: any) {
+            this.debugLog(`❌ Reinit failed: ${reinitError.message || 'unknown'}`);
             this.reset();
-            throw new Error('Spotify player device not working. Please try starting the round again - a new device will be created automatically.');
+            throw new Error('Spotify player device not working. Please try starting the round again.');
           }
         }
 
@@ -573,7 +611,7 @@ class SpotifyPlaybackService {
         if (response.status === 403) {
           throw new Error('Spotify Premium required. The Web Playback SDK only works with Spotify Premium accounts.');
         } else {
-          throw new Error(`Failed to start playback: ${error.error?.message || error.error?.reason || 'Unknown error'}`);
+          throw new Error(`Failed to start playback: ${errorBody.error?.message || errorBody.error?.reason || 'Unknown error'}`);
         }
       }
 
@@ -696,6 +734,7 @@ class SpotifyPlaybackService {
    */
   reset(): void {
     console.log('🔄 Resetting player for recreation...');
+    this.stopKeepAlive();
     if (this.player) {
       this.player.disconnect();
     }
@@ -707,6 +746,7 @@ class SpotifyPlaybackService {
    * Disconnect and cleanup
    */
   disconnect(): void {
+    this.stopKeepAlive();
     if (this.player) {
       console.log('🔌 Disconnecting Spotify Web Player');
       this.player.disconnect();

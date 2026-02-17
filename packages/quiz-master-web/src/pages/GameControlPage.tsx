@@ -72,6 +72,12 @@ export function GameControlPage() {
     setDebugInfo(prev => [...prev.slice(-19), logMessage]); // Keep last 20 logs
   };
 
+  // Wire up debug callback so spotifyPlaybackService logs show in debug panel
+  useEffect(() => {
+    spotifyPlaybackService.setDebugCallback((msg) => addDebugLog(msg));
+    return () => spotifyPlaybackService.setDebugCallback(null);
+  }, []);
+
   // Handle logo tap for debug panel
   const handleLogoTap = () => {
     logoTapCountRef.current++;
