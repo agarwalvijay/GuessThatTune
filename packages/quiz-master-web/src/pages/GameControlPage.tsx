@@ -59,6 +59,7 @@ export function GameControlPage() {
   const countdownTimerRef = useRef<number | null>(null);
   const currentRoundIndexRef = useRef<number>(-1);
   const currentRoundRef = useRef<RoundData | null>(null);
+  const isRecoveringRef = useRef(false); // Prevent concurrent recovery attempts
 
   // Keep screen awake during gameplay
   useWakeLock(true);
@@ -113,27 +114,41 @@ export function GameControlPage() {
   }, [currentRound]);
 
   // Auto-recover player when it disconnects
-  const recoverPlayer = async (songToResume?: any) => {
+  const recoverPlayer = async () => {
+    // Guard: prevent concurrent recovery attempts
+    if (isRecoveringRef.current) {
+      addDebugLog('⏳ Recovery already in progress, skipping...');
+      return;
+    }
     if (!accessToken) return;
-    addDebugLog('🔄 Auto-recovering player...');
+
+    isRecoveringRef.current = true;
     setIsRecoveringPlayer(true);
+    addDebugLog('🔄 Auto-recovering player...');
+
     try {
+      // Silence the not_ready callback during reset to prevent recursive recovery
+      spotifyPlaybackService.clearDeviceTakenOverCallback();
+
       spotifyPlaybackService.reset();
       await spotifyPlaybackService.initialize(accessToken);
       addDebugLog('✅ Player recovered!');
-      // If a song was playing, retry it
-      if (songToResume) {
-        addDebugLog('▶️ Resuming song...');
-        await spotifyPlaybackService.playSong(songToResume.uri, songToResume.startPosition);
-        addDebugLog('✅ Song resumed!');
-        setIsPlaying(true);
-      }
+
+      // Restore the not_ready callback after recovery
+      spotifyPlaybackService.onDeviceTakenOver(() => {
+        if (!isRecoveringRef.current) {
+          addDebugLog('⚠️ Device disconnected during game');
+          setIsPlaying(false);
+          recoverPlayer();
+        }
+      });
     } catch (err: any) {
       addDebugLog(`❌ Recovery failed: ${err.message || 'unknown error'}`);
       // Only show modal if auto-recovery fails
       setShowDeviceTakenOverWarning(true);
       setIsPlaying(false);
     } finally {
+      isRecoveringRef.current = false;
       setIsRecoveringPlayer(false);
     }
   };
@@ -141,14 +156,9 @@ export function GameControlPage() {
   // Listen for device taken over event
   useEffect(() => {
     spotifyPlaybackService.onDeviceTakenOver(() => {
-      addDebugLog('⚠️ Device disconnected - attempting silent recovery...');
-      setIsPlaying(false);
-      // Don't show blocking modal - try auto-recovery first
-      // If playing, try to resume current round
-      const roundSong = currentRoundRef.current?.song;
-      if (roundSong) {
-        recoverPlayer(); // Recover but don't auto-resume (let user click Next Round)
-      } else {
+      if (!isRecoveringRef.current) {
+        addDebugLog('⚠️ Device disconnected - attempting silent recovery...');
+        setIsPlaying(false);
         recoverPlayer();
       }
     });
@@ -608,9 +618,18 @@ export function GameControlPage() {
       if (errorMessage.includes('device not working') || errorMessage.includes('404')) {
         addDebugLog(`🔄 Device error - recovering and retrying...`);
         try {
-          await recoverPlayer();
-          // Wait for device to become stable
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Wait if recovery is already running (triggered by not_ready event)
+          if (isRecoveringRef.current) {
+            addDebugLog(`⏳ Waiting for in-progress recovery...`);
+            while (isRecoveringRef.current) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            addDebugLog(`✅ Recovery finished, retrying play...`);
+          } else {
+            await recoverPlayer();
+          }
+          // Short buffer for new device to stabilize
+          await new Promise(resolve => setTimeout(resolve, 1000));
           addDebugLog(`🎵 Retry playing...`);
           await spotifyPlaybackService.playSong(uri, startPosition);
           addDebugLog(`✅ Retry succeeded!`);
