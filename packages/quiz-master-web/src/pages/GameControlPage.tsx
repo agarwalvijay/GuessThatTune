@@ -547,7 +547,7 @@ export function GameControlPage() {
     });
   };
 
-  const playSong = async (song: any) => {
+  const playSong = async (song: any, isRetry: boolean = false) => {
     try {
       // Check if player is ready, reinitialize if not
       if (!spotifyPlaybackService.isReady()) {
@@ -577,8 +577,27 @@ export function GameControlPage() {
       const errorMessage = error.message || 'Failed to play song';
       addDebugLog(`❌ Playback error: ${errorMessage}`);
       console.error('Error playing song:', error);
+
+      // If device not working and this is first attempt, force reinitialize and retry
+      if (!isRetry && errorMessage.includes('device not working')) {
+        addDebugLog(`🔄 Forcing player reinitialization...`);
+        spotifyPlaybackService.reset();
+        if (!accessToken) {
+          addDebugLog(`❌ No access token for retry`);
+          throw new Error('No access token available');
+        }
+        await spotifyPlaybackService.initialize(accessToken);
+        addDebugLog(`✅ Player reinitialized, retrying...`);
+
+        // Retry once
+        return playSong(song, true);
+      }
+
+      // If still failing after retry, show user-friendly message
       if (errorMessage.includes('No Spotify devices found')) {
         alert('Please open Spotify on your phone or computer first, then try again.');
+      } else if (isRetry) {
+        alert('Failed to start playback after reinitialization. Please try clicking "Next Round" again.');
       }
     }
   };
