@@ -69,7 +69,11 @@ export function setupSocketHandlers(
 
         callback({ success: true, participant });
 
-        console.log(`Participant ${participant.name} (${participant.id}) joined session ${sessionId}`);
+        // Enhanced logging for diagnostics
+        const roomSize = io.sockets.adapter.rooms.get(sessionId)?.size || 0;
+        console.log(`✅ Participant ${participant.name} (${participant.id}) joined session ${sessionId}`);
+        console.log(`   📢 Room ${sessionId} now has ${roomSize} connected sockets`);
+        console.log(`   👥 Session has ${updatedSession?.participantIds.length || 0} total participants`);
       } catch (error) {
         console.error('Error in join_game:', error);
         callback({ success: false, error: 'Server error' });
@@ -182,6 +186,8 @@ export function setupSocketHandlers(
         // Broadcast updated game state to quiz master
         const session = gameSessionService.getSession(sessionId);
         if (session) {
+          const roomSize = io.sockets.adapter.rooms.get(sessionId)?.size || 0;
+          console.log(`📢 Broadcasting GAME_STATE_UPDATE to ${roomSize} sockets in room ${sessionId}`);
           io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
         }
 

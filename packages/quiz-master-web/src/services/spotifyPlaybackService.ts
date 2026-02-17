@@ -398,6 +398,16 @@ class SpotifyPlaybackService {
     }
 
     try {
+      // DIAGNOSTIC: Check player health before playback
+      if (this.player) {
+        const volume = await this.player.getVolume();
+        console.log('🔊 Current player volume:', volume);
+        if (volume === 0) {
+          console.warn('⚠️ Volume is 0! Setting to 0.5');
+          await this.player.setVolume(0.5);
+        }
+      }
+
       // Transfer playback to our device first (activate it) - only needed once per session
       if (retryCount === 0 && !this.isDeviceActive) {
         console.log('🔄 Activating device for first playback...');
@@ -454,6 +464,32 @@ class SpotifyPlaybackService {
 
       console.log('✅ Playback started successfully');
       this.isDeviceActive = true; // Mark device as active after first successful playback
+
+      // DIAGNOSTIC: Verify playback state after 1 second
+      setTimeout(async () => {
+        if (this.player) {
+          const state = await this.player.getCurrentState();
+          if (state) {
+            const volume = await this.player.getVolume();
+            console.log('🔍 Playback verification:');
+            console.log('   - Track:', state.track_window.current_track.name);
+            console.log('   - Paused:', state.paused);
+            console.log('   - Position:', Math.floor(state.position / 1000), 's');
+            console.log('   - Volume:', volume);
+
+            if (volume === 0) {
+              console.error('❌ AUDIO ISSUE: Volume is 0! Attempting to fix...');
+              await this.player.setVolume(0.5);
+            }
+            if (state.paused) {
+              console.error('❌ AUDIO ISSUE: Playback is paused! Attempting to resume...');
+              await this.player.resume();
+            }
+          } else {
+            console.error('❌ AUDIO ISSUE: No playback state - player may be disconnected');
+          }
+        }
+      }, 1000);
     } catch (error) {
       console.error('❌ Error playing song:', error);
       throw error;
