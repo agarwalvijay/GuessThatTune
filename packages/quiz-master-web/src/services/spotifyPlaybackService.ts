@@ -295,18 +295,14 @@ class SpotifyPlaybackService {
       this.deviceId = device_id;
     });
 
-    // Not Ready event - device has gone offline (usually means another device took over)
+    // Not Ready event - device has gone offline temporarily
+    // The SDK will automatically reconnect and fire 'ready' again with the same/new device ID
+    // Do NOT clear deviceId or disconnect the player - let the SDK self-heal
     this.player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
-      console.log('❌ Device ID has gone offline:', device_id);
-      console.log('⚠️ Playback may have been taken over by another device');
+      console.log('⚠️ Device temporarily offline:', device_id, '- SDK will auto-reconnect');
       this.isDeviceActive = false;
-      // Clear deviceId so isReady() returns false and triggers reinit
-      this.deviceId = null;
-
-      // Notify the app that this device was taken over
-      if (this.onDeviceTakenOverCallback) {
-        this.onDeviceTakenOverCallback();
-      }
+      // Note: we intentionally keep deviceId so isReady() stays true during brief offline periods
+      // The 'ready' event will update deviceId if it changes on reconnect
     });
 
     // Player state changed
@@ -407,19 +403,12 @@ class SpotifyPlaybackService {
         await (this.player as any).activateElement();
       }
 
-      // 2. Check current SDK state - if null, device has lost focus
-      //    Re-transfer playback before issuing the play command
-      const currentState = await this.player?.getCurrentState();
-      if (!currentState) {
-        console.log('🔄 SDK has no state (device lost focus) - re-activating...');
-        await this.transferPlayback();
-        await new Promise(resolve => setTimeout(resolve, 300));
-      } else if (retryCount === 0 && !this.isDeviceActive) {
-        // First playback of session - ensure device is active
-        console.log('🔄 Activating device for first playback...');
-        await this.transferPlayback();
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
+      // 2. Always transfer playback to our device before each song
+      //    This ensures the device is "active" in Spotify's backend even after being paused.
+      //    Between rounds the device can lose active status - this re-activates it cheaply.
+      console.log('🔄 Activating device before playback...');
+      await this.transferPlayback();
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // 3. Volume health check
       if (this.player) {

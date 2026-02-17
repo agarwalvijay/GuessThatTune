@@ -153,20 +153,20 @@ export function GameControlPage() {
     }
   };
 
-  // Listen for device taken over event
+  // The onDeviceTakenOver callback is no longer triggered for normal between-round
+  // disconnects (the SDK self-heals those). It's only used if we explicitly call it
+  // after a timeout, so we keep the handler simple.
   useEffect(() => {
     spotifyPlaybackService.onDeviceTakenOver(() => {
-      if (!isRecoveringRef.current) {
-        addDebugLog('⚠️ Device disconnected - attempting silent recovery...');
-        setIsPlaying(false);
-        recoverPlayer();
-      }
+      addDebugLog('⚠️ Device taken over by another Spotify client');
+      setIsPlaying(false);
+      setShowDeviceTakenOverWarning(true);
     });
 
     return () => {
       spotifyPlaybackService.clearDeviceTakenOverCallback();
     };
-  }, [accessToken]);
+  }, []);
 
   // Periodically check player health (always running, not just when debug panel shown)
   useEffect(() => {
@@ -592,50 +592,38 @@ export function GameControlPage() {
   };
 
   const playSong = async (song: any) => {
-    // Random start position (avoiding the very end of the song)
     const durationMs = song.durationMs || (song.metadata?.duration * 1000) || 180000;
     const maxStart = Math.max(0, durationMs - 30000);
     const startPosition = Math.floor(Math.random() * maxStart);
     const uri = song.spotifyUri;
     const title = song.title || song.metadata?.title || 'Unknown';
 
-    // If player isn't ready, recover first
+    // Only do a full reinit if the player object itself is gone (not just inactive)
     if (!spotifyPlaybackService.isReady()) {
-      addDebugLog(`⚠️ Player not ready before play - recovering...`);
+      addDebugLog(`⚠️ Player object gone - reinitializing...`);
       await recoverPlayer();
     }
 
     try {
       addDebugLog(`🎵 Playing: ${title.substring(0, 25)}...`);
+      // spotifyPlaybackService.playSong() always calls transferPlayback() internally now
       await spotifyPlaybackService.playSong(uri, startPosition);
       addDebugLog(`✅ Playback started`);
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to play song';
       addDebugLog(`❌ Play failed: ${errorMessage.substring(0, 60)}`);
       console.error('Error playing song:', error);
-
-      // Auto-recover and retry once
-      if (errorMessage.includes('device not working') || errorMessage.includes('404')) {
-        addDebugLog(`🔄 Device error - recovering and retrying...`);
+      // The service already retried internally with a 2 second wait.
+      // Only do a full reinit if the device is truly gone.
+      if (errorMessage.includes('device not working')) {
+        addDebugLog(`🔄 Full reinit needed...`);
+        await recoverPlayer();
         try {
-          // Wait if recovery is already running (triggered by not_ready event)
-          if (isRecoveringRef.current) {
-            addDebugLog(`⏳ Waiting for in-progress recovery...`);
-            while (isRecoveringRef.current) {
-              await new Promise(resolve => setTimeout(resolve, 200));
-            }
-            addDebugLog(`✅ Recovery finished, retrying play...`);
-          } else {
-            await recoverPlayer();
-          }
-          // Short buffer for new device to stabilize
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          addDebugLog(`🎵 Retry playing...`);
           await spotifyPlaybackService.playSong(uri, startPosition);
-          addDebugLog(`✅ Retry succeeded!`);
+          addDebugLog(`✅ Retry after reinit succeeded!`);
           setIsPlaying(true);
-        } catch (retryError: any) {
-          addDebugLog(`❌ Retry failed: ${retryError.message?.substring(0, 50)}`);
+        } catch {
+          addDebugLog(`❌ Failed after reinit. Press Next Round to retry.`);
           alert('Could not play song. Please press "Next Round" to try again.');
         }
       }
