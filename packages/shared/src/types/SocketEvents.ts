@@ -5,6 +5,7 @@ import { BuzzerEvent } from './BuzzerEvent';
 // Client -> Server Events
 export interface ClientToServerEvents {
   join_game: (data: { sessionId: string; participantName: string }, callback: (response: { success: boolean; participant?: Participant; error?: string }) => void) => void;
+  rejoin_game: (data: { sessionId: string; participantId: string }, callback: (response: { success: boolean; participant?: { id: string; name: string }; error?: string }) => void) => void;
   join_session_as_master: (data: { sessionId: string }) => void;
   leave_game: (data: { sessionId: string }) => void;
   buzzer_pressed: (data: { sessionId: string }, callback: (response: { success: boolean; buzzerEvent?: BuzzerEvent; error?: string }) => void) => void;

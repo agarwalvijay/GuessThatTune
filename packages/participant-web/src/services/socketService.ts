@@ -29,6 +29,20 @@ class SocketService {
       const store = useParticipantStore.getState();
       store.setConnected(true);
       store.setError(null);
+
+      // Re-join game after reconnect (new socket = lost server-side association)
+      const { sessionId, participantId } = store;
+      if (sessionId && participantId && this.socket) {
+        console.log(`🔄 Reconnected — rejoining session ${sessionId} as ${participantId}`);
+        this.socket.emit('rejoin_game', { sessionId, participantId }, (response) => {
+          if (response.success) {
+            console.log('✅ Rejoined game after reconnect');
+          } else {
+            console.error('❌ Rejoin failed:', response.error);
+            store.setError('Lost connection to game. Please rejoin.');
+          }
+        });
+      }
     });
 
     this.socket.on('disconnect', () => {

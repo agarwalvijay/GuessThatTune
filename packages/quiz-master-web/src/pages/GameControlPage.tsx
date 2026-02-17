@@ -78,6 +78,16 @@ export function GameControlPage() {
     return () => spotifyPlaybackService.setDebugCallback(null);
   }, []);
 
+  // When Socket.IO reconnects, proactively re-establish Spotify device
+  // (WebSocket disruptions kill both Socket.IO and Spotify SDK connections)
+  useEffect(() => {
+    socketService.onReconnect(() => {
+      addDebugLog('🔄 Socket reconnected — re-establishing Spotify device...');
+      spotifyPlaybackService.reestablishDevice();
+    });
+    return () => socketService.onReconnect(null);
+  }, []);
+
   // Handle logo tap for debug panel
   const handleLogoTap = () => {
     logoTapCountRef.current++;
@@ -214,16 +224,16 @@ export function GameControlPage() {
       }
       console.log('✅ No conflicts detected');
 
-      // Initialize Spotify player
+      // Initialize Spotify player (don't block socket setup on failure)
       console.log('🎵 Initializing Spotify player...');
       try {
         await initializePlayer();
       } catch (error) {
         console.error('❌ Player initialization failed in init:', error);
-        return; // Stop initialization if player fails
+        // Continue with socket setup — player can be recovered later
       }
 
-      // Set up socket listeners
+      // Set up socket listeners (always, even if player init failed)
       console.log('📡 Setting up socket listeners...');
       setupSocketListeners();
 

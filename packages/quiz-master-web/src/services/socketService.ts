@@ -7,6 +7,9 @@ type SocketEventCallback = (...args: any[]) => void;
 class SocketService {
   private socket: Socket | null = null;
   private isConnected = false;
+  private currentSessionId: string | null = null;
+  private onReconnectCallback: (() => void) | null = null;
+  private hasConnectedBefore = false;
 
   /**
    * Connect to the Socket.IO server
@@ -17,17 +20,35 @@ class SocketService {
     }
 
     this.socket = io(config.backendUrl, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],  // Allow polling fallback for mobile stability
       autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     this.socket.on('connect', () => {
       console.log('✅ Socket connected:', this.socket?.id);
+      const isReconnect = this.hasConnectedBefore;
       this.isConnected = true;
+      this.hasConnectedBefore = true;
+
+      // Re-join session room after reconnect (new socket ID = lost room membership)
+      if (this.currentSessionId) {
+        console.log(`🔄 Re-joining session ${this.currentSessionId} after reconnect`);
+        this.socket?.emit('join_session_as_master', { sessionId: this.currentSessionId });
+      }
+
+      // Notify that a reconnect happened — Spotify device likely needs re-registration
+      if (isReconnect && this.onReconnectCallback) {
+        console.log('🔄 Socket reconnected — triggering Spotify device recovery');
+        this.onReconnectCallback();
+      }
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ Socket disconnected, reason:', reason);
       this.isConnected = false;
     });
 
@@ -40,6 +61,7 @@ class SocketService {
    * Disconnect from the Socket.IO server
    */
   disconnect(): void {
+    this.currentSessionId = null;
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -51,6 +73,7 @@ class SocketService {
    * Join a game session room
    */
   joinSession(sessionId: string): void {
+    this.currentSessionId = sessionId;
     if (this.socket) {
       this.socket.emit('join_session_as_master', { sessionId });
       console.log(`📡 Joined session as master: ${sessionId}`);
@@ -61,6 +84,7 @@ class SocketService {
    * Leave a game session room
    */
   leaveSession(sessionId: string): void {
+    this.currentSessionId = null;
     if (this.socket) {
       this.socket.emit('leave_session', { sessionId });
       console.log(`📡 Left session: ${sessionId}`);
@@ -159,6 +183,14 @@ class SocketService {
     if (this.socket) {
       this.socket.emit(event, ...args);
     }
+  }
+
+  /**
+   * Register a callback that fires when socket reconnects.
+   * Use this to re-establish Spotify device after WebSocket disruption.
+   */
+  onReconnect(callback: (() => void) | null): void {
+    this.onReconnectCallback = callback;
   }
 
   /**

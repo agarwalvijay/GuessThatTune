@@ -157,8 +157,13 @@ class SpotifyPlaybackService {
       return Promise.resolve();
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout waiting for Spotify SDK to load. Please refresh the page.'));
+      }, 10000); // 10 second timeout
+
       window.onSpotifyWebPlaybackSDKReady = () => {
+        clearTimeout(timeout);
         console.log('✅ Spotify Web Playback SDK ready');
         this.sdkReady = true;
         resolve();
@@ -510,6 +515,42 @@ class SpotifyPlaybackService {
     } catch (error) {
       console.warn('⚠️ Error transferring playback:', error);
       // Don't throw - we'll try to play anyway
+    }
+  }
+
+  /**
+   * Proactively re-establish Spotify device after a WebSocket disruption.
+   * Call this when Socket.IO reconnects — the Spotify SDK WebSocket likely
+   * died at the same time, so the device may be de-registered.
+   */
+  async reestablishDevice(): Promise<void> {
+    if (!this.player || !this.accessToken) {
+      this.debugLog('⚠️ reestablishDevice: no player or token');
+      return;
+    }
+
+    this.debugLog('🔄 WebSocket disruption detected — checking Spotify device...');
+
+    // Check if our device still exists in Spotify's backend
+    const deviceId = await this.findOurDevice();
+
+    if (deviceId) {
+      // Device exists — update our ID if it changed and re-activate
+      if (deviceId !== this.deviceId) {
+        this.debugLog(`📱 Device ID changed: ${this.deviceId?.substring(0, 8)} → ${deviceId.substring(0, 8)}`);
+        this.deviceId = deviceId;
+      }
+      await this.transferPlayback();
+      this.debugLog('✅ Device re-established');
+    } else {
+      // Device gone — do a fast reinit to re-register
+      this.debugLog('❌ Device gone from Spotify — fast reinit...');
+      try {
+        await this.reinitializePlayerInline();
+        this.debugLog('✅ Device re-registered after reinit');
+      } catch (err: any) {
+        this.debugLog(`❌ Reinit failed: ${err.message || 'unknown'}`);
+      }
     }
   }
 

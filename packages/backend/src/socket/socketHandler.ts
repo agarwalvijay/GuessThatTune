@@ -15,7 +15,7 @@ export function setupSocketHandlers(
   io: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
 ) {
   io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) => {
-    console.log(`Client connected: ${socket.id}`);
+    console.log(`${new Date().toISOString()} Client connected: ${socket.id}`);
 
     /**
      * Handle participant joining a game
@@ -76,6 +76,51 @@ export function setupSocketHandlers(
         console.log(`   👥 Session has ${updatedSession?.participantIds.length || 0} total participants`);
       } catch (error) {
         console.error('Error in join_game:', error);
+        callback({ success: false, error: 'Server error' });
+      }
+    });
+
+    /**
+     * Handle participant reconnecting to a game (re-associate existing participant with new socket)
+     */
+    socket.on('rejoin_game', ({ sessionId, participantId }, callback) => {
+      try {
+        if (!isValidSessionId(sessionId)) {
+          callback({ success: false, error: 'Invalid session ID' });
+          return;
+        }
+
+        const session = gameSessionService.getSession(sessionId);
+        if (!session) {
+          callback({ success: false, error: 'Session not found' });
+          return;
+        }
+
+        const participant = gameSessionService.getParticipant(participantId);
+        if (!participant) {
+          callback({ success: false, error: 'Participant not found' });
+          return;
+        }
+
+        // Re-associate with new socket
+        participant.socketId = socket.id;
+        participant.isConnected = true;
+
+        // Store in socket data
+        socket.data.participantId = participantId;
+        socket.data.sessionId = sessionId;
+
+        // Re-join socket room
+        socket.join(sessionId);
+
+        // Send current game state
+        socket.emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
+
+        callback({ success: true, participant: { id: participant.id, name: participant.name } });
+
+        console.log(`🔄 Participant ${participant.name} (${participantId}) rejoined session ${sessionId} with new socket ${socket.id}`);
+      } catch (error) {
+        console.error('Error in rejoin_game:', error);
         callback({ success: false, error: 'Server error' });
       }
     });
@@ -269,7 +314,7 @@ export function setupSocketHandlers(
           console.log(`Participant ${participantId} disconnected from session ${sessionId}`);
         }
 
-        console.log(`Client disconnected: ${socket.id}`);
+        console.log(`${new Date().toISOString()} Client disconnected: ${socket.id}`);
       } catch (error) {
         console.error('Error in disconnect:', error);
       }
