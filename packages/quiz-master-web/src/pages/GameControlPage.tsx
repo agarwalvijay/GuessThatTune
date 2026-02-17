@@ -127,21 +127,9 @@ export function GameControlPage() {
     addDebugLog('🔄 Auto-recovering player...');
 
     try {
-      // Silence the not_ready callback during reset to prevent recursive recovery
-      spotifyPlaybackService.clearDeviceTakenOverCallback();
-
       spotifyPlaybackService.reset();
       await spotifyPlaybackService.initialize(accessToken);
       addDebugLog('✅ Player recovered!');
-
-      // Restore the not_ready callback after recovery
-      spotifyPlaybackService.onDeviceTakenOver(() => {
-        if (!isRecoveringRef.current) {
-          addDebugLog('⚠️ Device disconnected during game');
-          setIsPlaying(false);
-          recoverPlayer();
-        }
-      });
     } catch (err: any) {
       addDebugLog(`❌ Recovery failed: ${err.message || 'unknown error'}`);
       // Only show modal if auto-recovery fails
