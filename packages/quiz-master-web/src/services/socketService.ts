@@ -20,8 +20,8 @@ class SocketService {
     }
 
     this.socket = io(config.backendUrl, {
-      // Start with polling (stable HTTP), then upgrade to WebSocket
-      // Mobile browsers kill WebSocket connections but polling always works
+      transports: ['websocket'],
+      upgrade: false,
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
