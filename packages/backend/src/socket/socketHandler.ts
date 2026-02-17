@@ -15,7 +15,7 @@ export function setupSocketHandlers(
   io: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
 ) {
   io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) => {
-    console.log(`${new Date().toISOString()} Client connected: ${socket.id}`);
+    console.log(`${new Date().toISOString()} Client connected: ${socket.id} transport: ${socket.conn.transport.name}`);
 
     /**
      * Handle participant joining a game

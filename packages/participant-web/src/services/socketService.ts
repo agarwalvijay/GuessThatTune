@@ -18,9 +18,9 @@ class SocketService {
     console.log('🔌 Initializing socket connection to:', BACKEND_URL);
 
     this.socket = io(BACKEND_URL, {
-      transports: ['websocket', 'polling'],
+      // Default: start with polling, upgrade to WebSocket
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
     });
 
