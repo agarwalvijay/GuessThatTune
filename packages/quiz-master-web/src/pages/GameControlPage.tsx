@@ -46,6 +46,7 @@ export function GameControlPage() {
   const [showPlaybackConflictWarning, setShowPlaybackConflictWarning] = useState(false);
   const [conflictingDeviceName, setConflictingDeviceName] = useState<string>('');
   const [showDeviceTakenOverWarning, setShowDeviceTakenOverWarning] = useState(false);
+  const [isRecoveringPlayer, setIsRecoveringPlayer] = useState(false);
 
   // Debug panel state
   const [showDebugPanel, setShowDebugPanel] = useState(false);
@@ -57,6 +58,7 @@ export function GameControlPage() {
   const isPlayingRef = useRef(false);
   const countdownTimerRef = useRef<number | null>(null);
   const currentRoundIndexRef = useRef<number>(-1);
+  const currentRoundRef = useRef<RoundData | null>(null);
 
   // Keep screen awake during gameplay
   useWakeLock(true);
@@ -107,22 +109,54 @@ export function GameControlPage() {
 
   useEffect(() => {
     currentRoundIndexRef.current = currentRound?.roundIndex ?? -1;
+    currentRoundRef.current = currentRound;
   }, [currentRound]);
+
+  // Auto-recover player when it disconnects
+  const recoverPlayer = async (songToResume?: any) => {
+    if (!accessToken) return;
+    addDebugLog('🔄 Auto-recovering player...');
+    setIsRecoveringPlayer(true);
+    try {
+      spotifyPlaybackService.reset();
+      await spotifyPlaybackService.initialize(accessToken);
+      addDebugLog('✅ Player recovered!');
+      // If a song was playing, retry it
+      if (songToResume) {
+        addDebugLog('▶️ Resuming song...');
+        await spotifyPlaybackService.playSong(songToResume.uri, songToResume.startPosition);
+        addDebugLog('✅ Song resumed!');
+        setIsPlaying(true);
+      }
+    } catch (err: any) {
+      addDebugLog(`❌ Recovery failed: ${err.message || 'unknown error'}`);
+      // Only show modal if auto-recovery fails
+      setShowDeviceTakenOverWarning(true);
+      setIsPlaying(false);
+    } finally {
+      setIsRecoveringPlayer(false);
+    }
+  };
 
   // Listen for device taken over event
   useEffect(() => {
     spotifyPlaybackService.onDeviceTakenOver(() => {
-      console.log('⚠️ Device taken over detected in GameControlPage');
-      addDebugLog('⚠️ Device taken over!');
-      setShowDeviceTakenOverWarning(true);
-      // Pause playback since we no longer control it
+      addDebugLog('⚠️ Device disconnected - attempting silent recovery...');
       setIsPlaying(false);
+      // Don't show blocking modal - try auto-recovery first
+      // If playing, try to resume current round
+      const roundSong = currentRoundRef.current?.song;
+      if (roundSong) {
+        recoverPlayer(); // Recover but don't auto-resume (let user click Next Round)
+      } else {
+        recoverPlayer();
+      }
     });
 
     return () => {
       spotifyPlaybackService.clearDeviceTakenOverCallback();
     };
-  }, []);
+  }, [accessToken]);
 
   // Periodically check player health (always running, not just when debug panel shown)
   useEffect(() => {
@@ -547,57 +581,44 @@ export function GameControlPage() {
     });
   };
 
-  const playSong = async (song: any, isRetry: boolean = false) => {
+  const playSong = async (song: any) => {
+    // Random start position (avoiding the very end of the song)
+    const durationMs = song.durationMs || (song.metadata?.duration * 1000) || 180000;
+    const maxStart = Math.max(0, durationMs - 30000);
+    const startPosition = Math.floor(Math.random() * maxStart);
+    const uri = song.spotifyUri;
+    const title = song.title || song.metadata?.title || 'Unknown';
+
+    // If player isn't ready, recover first
+    if (!spotifyPlaybackService.isReady()) {
+      addDebugLog(`⚠️ Player not ready before play - recovering...`);
+      await recoverPlayer();
+    }
+
     try {
-      // Check if player is ready, reinitialize if not
-      if (!spotifyPlaybackService.isReady()) {
-        addDebugLog(`⚠️ Player not ready, reinitializing...`);
-        if (!accessToken) {
-          addDebugLog(`❌ No access token for reinitialization`);
-          throw new Error('No access token available');
-        }
-        await spotifyPlaybackService.initialize(accessToken);
-        addDebugLog(`✅ Player reinitialized`);
-      }
-
-      // Random start position (avoiding the very end of the song)
-      const durationMs = song.durationMs || (song.metadata?.duration * 1000) || 180000;
-      const maxStart = Math.max(0, durationMs - 30000);
-      const startPosition = Math.floor(Math.random() * maxStart);
-
-      const uri = song.spotifyUri;
-      const title = song.title || song.metadata?.title || 'Unknown';
-
-      addDebugLog(`🎵 Playing: ${title.substring(0, 30)}...`);
+      addDebugLog(`🎵 Playing: ${title.substring(0, 25)}...`);
       await spotifyPlaybackService.playSong(uri, startPosition);
       addDebugLog(`✅ Playback started`);
-
-      // For autoPause, the continuous pause loop in useEffect will handle it
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to play song';
-      addDebugLog(`❌ Playback error: ${errorMessage}`);
+      addDebugLog(`❌ Play failed: ${errorMessage.substring(0, 60)}`);
       console.error('Error playing song:', error);
 
-      // If device not working and this is first attempt, force reinitialize and retry
-      if (!isRetry && errorMessage.includes('device not working')) {
-        addDebugLog(`🔄 Forcing player reinitialization...`);
-        spotifyPlaybackService.reset();
-        if (!accessToken) {
-          addDebugLog(`❌ No access token for retry`);
-          throw new Error('No access token available');
+      // Auto-recover and retry once
+      if (errorMessage.includes('device not working') || errorMessage.includes('404')) {
+        addDebugLog(`🔄 Device error - recovering and retrying...`);
+        try {
+          await recoverPlayer();
+          // Wait for device to become stable
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          addDebugLog(`🎵 Retry playing...`);
+          await spotifyPlaybackService.playSong(uri, startPosition);
+          addDebugLog(`✅ Retry succeeded!`);
+          setIsPlaying(true);
+        } catch (retryError: any) {
+          addDebugLog(`❌ Retry failed: ${retryError.message?.substring(0, 50)}`);
+          alert('Could not play song. Please press "Next Round" to try again.');
         }
-        await spotifyPlaybackService.initialize(accessToken);
-        addDebugLog(`✅ Player reinitialized, retrying...`);
-
-        // Retry once
-        return playSong(song, true);
-      }
-
-      // If still failing after retry, show user-friendly message
-      if (errorMessage.includes('No Spotify devices found')) {
-        alert('Please open Spotify on your phone or computer first, then try again.');
-      } else if (isRetry) {
-        alert('Failed to start playback after reinitialization. Please try clicking "Next Round" again.');
       }
     }
   };
@@ -1127,6 +1148,13 @@ export function GameControlPage() {
             </div>
           </div>
         )}
+
+      {/* Reconnecting banner */}
+      {isRecoveringPlayer && (
+        <div style={styles.reconnectingBanner}>
+          🔄 Reconnecting audio...
+        </div>
+      )}
 
       <div style={styles.content}>
         <div style={styles.header}>
@@ -1662,6 +1690,19 @@ const styles: Record<string, React.CSSProperties> = {
     height: '40px',
     width: 'auto',
     cursor: 'pointer',
+  },
+  reconnectingBanner: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#f59e0b',
+    color: 'white',
+    textAlign: 'center' as const,
+    padding: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    zIndex: 9998,
   },
   debugButton: {
     backgroundColor: 'transparent',
