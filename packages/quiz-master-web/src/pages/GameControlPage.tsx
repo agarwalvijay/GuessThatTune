@@ -72,6 +72,7 @@ export function GameControlPage() {
   // Handle logo tap for debug panel
   const handleLogoTap = () => {
     logoTapCountRef.current++;
+    console.log(`🔧 Logo tapped ${logoTapCountRef.current} times`);
 
     // Clear existing timer
     if (logoTapTimerRef.current) {
@@ -80,14 +81,22 @@ export function GameControlPage() {
 
     // Reset tap count after 2 seconds
     logoTapTimerRef.current = window.setTimeout(() => {
+      console.log('🔧 Tap counter reset');
       logoTapCountRef.current = 0;
     }, 2000);
 
-    // Toggle debug panel after 5 taps
-    if (logoTapCountRef.current >= 5) {
-      setShowDebugPanel(prev => !prev);
+    // Toggle debug panel after 3 taps (reduced from 5)
+    if (logoTapCountRef.current >= 3) {
+      console.log('🔧 Toggling debug panel!');
+      setShowDebugPanel(prev => {
+        const newState = !prev;
+        console.log('🔧 Debug panel is now:', newState ? 'SHOWN' : 'HIDDEN');
+        return newState;
+      });
       logoTapCountRef.current = 0;
-      addDebugLog(showDebugPanel ? 'Debug panel hidden' : 'Debug panel shown');
+      setTimeout(() => {
+        addDebugLog('Debug panel toggled');
+      }, 100);
     }
   };
 
@@ -1090,6 +1099,16 @@ export function GameControlPage() {
             onClick={handleLogoTap}
           />
           <h1 style={styles.appTitle}>Hear and Guess</h1>
+          <button
+            onClick={() => {
+              console.log('🔧 Debug button clicked!');
+              setShowDebugPanel(prev => !prev);
+            }}
+            style={styles.debugButton}
+            title="Toggle Debug Panel"
+          >
+            🔧
+          </button>
           <div style={styles.gameModeIndicator}>
             {gameSession?.settings?.gameMode === 'multiple_choice' ? '📝' : '🔔'}
           </div>
@@ -1604,6 +1623,20 @@ const styles: Record<string, React.CSSProperties> = {
   headerLogo: {
     height: '40px',
     width: 'auto',
+    cursor: 'pointer',
+  },
+  debugButton: {
+    backgroundColor: 'transparent',
+    border: '2px solid #667eea',
+    borderRadius: '50%',
+    width: '36px',
+    height: '36px',
+    fontSize: '16px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0',
   },
   playbackCard: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
