@@ -75,6 +75,7 @@ class SpotifyPlaybackService {
   private maxInitializationAttempts: number = 3;
   private onDebugLog: ((msg: string) => void) | null = null;
   private keepAliveInterval: number | null = null;
+  private recoveryInProgress: Promise<void> | null = null;
 
   /**
    * Set a callback to receive debug logs (shown in on-screen debug panel)
@@ -524,6 +525,16 @@ class SpotifyPlaybackService {
    * died at the same time, so the device may be de-registered.
    */
   async reestablishDevice(): Promise<void> {
+    // Track recovery so playSong() can wait for it
+    this.recoveryInProgress = this.doReestablishDevice();
+    try {
+      await this.recoveryInProgress;
+    } finally {
+      this.recoveryInProgress = null;
+    }
+  }
+
+  private async doReestablishDevice(): Promise<void> {
     if (!this.accessToken) {
       this.debugLog('⚠️ reestablishDevice: no access token');
       return;
@@ -569,6 +580,17 @@ class SpotifyPlaybackService {
    * Play a song on the Web Player
    */
   async playSong(trackUri: string, startPositionMs: number = 0, retryCount: number = 0): Promise<void> {
+    // Wait for any in-progress device recovery before attempting to play
+    if (this.recoveryInProgress) {
+      this.debugLog('⏳ Waiting for device recovery to complete before playing...');
+      try {
+        await this.recoveryInProgress;
+        this.debugLog('✅ Recovery complete, proceeding to play');
+      } catch {
+        this.debugLog('⚠️ Recovery failed, attempting to play anyway');
+      }
+    }
+
     if (!this.accessToken) {
       throw new Error('No access token available. Please log in again.');
     }
