@@ -400,27 +400,38 @@ class SpotifyPlaybackService {
     }
 
     try {
-      // DIAGNOSTIC: Check player health before playback
+      // 1. Re-grab hardware focus via activateElement (if available)
+      //    This is especially important on mobile browsers that lose audio focus
+      if (this.player && typeof (this.player as any).activateElement === 'function') {
+        console.log('🎯 Activating element to grab audio focus...');
+        await (this.player as any).activateElement();
+      }
+
+      // 2. Check current SDK state - if null, device has lost focus
+      //    Re-transfer playback before issuing the play command
+      const currentState = await this.player?.getCurrentState();
+      if (!currentState) {
+        console.log('🔄 SDK has no state (device lost focus) - re-activating...');
+        await this.transferPlayback();
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } else if (retryCount === 0 && !this.isDeviceActive) {
+        // First playback of session - ensure device is active
+        console.log('🔄 Activating device for first playback...');
+        await this.transferPlayback();
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      // 3. Volume health check
       if (this.player) {
         const volume = await this.player.getVolume();
-        console.log('🔊 Current player volume:', volume);
         if (volume === 0) {
-          console.warn('⚠️ Volume is 0! Setting to 0.5');
+          console.warn('⚠️ Volume is 0, restoring to 0.5');
           await this.player.setVolume(0.5);
         }
       }
 
-      // Transfer playback to our device first (activate it) - only needed once per session
-      if (retryCount === 0 && !this.isDeviceActive) {
-        console.log('🔄 Activating device for first playback...');
-        await this.transferPlayback();
-        // Wait a moment for transfer to take effect
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
       console.log(`🎵 Playing track (attempt ${retryCount + 1}/2):`, trackUri);
       console.log('📊 Start position:', Math.floor(startPositionMs / 1000), 'seconds');
-      console.log('🎧 Device ID:', this.deviceId?.substring(0, 8) + '...');
 
       // Use Spotify Connect API to start playback on our Web Player device
       const response = await fetch(
@@ -449,14 +460,13 @@ class SpotifyPlaybackService {
           return this.playSong(trackUri, startPositionMs, retryCount + 1);
         }
 
-        // After 2 failures, reset player and suggest retry
+        // After 2 failures, reset player so next initialize() will recreate it
         if (response.status === 404 && retryCount === 1) {
           console.error('❌ Device still not found after retry. Resetting player...');
-          this.reset(); // Clear player so next initialize() will recreate
+          this.reset();
           throw new Error('Spotify player device not working. Please try starting the round again - a new device will be created automatically.');
         }
 
-        // Provide better error messages for other errors
         if (response.status === 403) {
           throw new Error('Spotify Premium required. The Web Playback SDK only works with Spotify Premium accounts.');
         } else {
@@ -465,33 +475,27 @@ class SpotifyPlaybackService {
       }
 
       console.log('✅ Playback started successfully');
-      this.isDeviceActive = true; // Mark device as active after first successful playback
+      this.isDeviceActive = true;
 
-      // DIAGNOSTIC: Verify playback state after 1 second
+      // 4. Quick verification at 300ms - if SDK is stuck in paused state, force resume
       setTimeout(async () => {
         if (this.player) {
           const state = await this.player.getCurrentState();
           if (state) {
             const volume = await this.player.getVolume();
-            console.log('🔍 Playback verification:');
-            console.log('   - Track:', state.track_window.current_track.name);
-            console.log('   - Paused:', state.paused);
-            console.log('   - Position:', Math.floor(state.position / 1000), 's');
-            console.log('   - Volume:', volume);
-
             if (volume === 0) {
-              console.error('❌ AUDIO ISSUE: Volume is 0! Attempting to fix...');
+              console.warn('⚠️ Volume still 0 after play, restoring...');
               await this.player.setVolume(0.5);
             }
             if (state.paused) {
-              console.error('❌ AUDIO ISSUE: Playback is paused! Attempting to resume...');
+              console.warn('⚠️ SDK stuck in paused state, forcing resume...');
               await this.player.resume();
             }
           } else {
-            console.error('❌ AUDIO ISSUE: No playback state - player may be disconnected');
+            console.warn('⚠️ No playback state at 300ms check');
           }
         }
-      }, 1000);
+      }, 300);
     } catch (error) {
       console.error('❌ Error playing song:', error);
       throw error;
