@@ -47,6 +47,7 @@ export function ResultsPage() {
 
   return (
     <div className="results-page">
+      <div className="winner-flash" />
       <div className="results-container">
         <div className="results-header">
           <img src="/logo.png" alt="Hear and Guess" className="results-logo" />

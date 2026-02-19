@@ -51,6 +51,7 @@ export function ResultsPage() {
 
   return (
     <div className="results-cinematic" style={styles.container}>
+      <div className="winner-flash" />
       <div style={styles.content}>
         <h1 style={styles.appTitle}>Hear and Guess</h1>
 
@@ -58,7 +59,7 @@ export function ResultsPage() {
         <div className="glass-card" style={styles.header}>
           <h2 className="cinematic-title" style={styles.headerTitle}>Game Complete!</h2>
           {winner && (
-            <div style={styles.winnerBadge}>
+            <div className="winner-pulse" style={styles.winnerBadge}>
               <p style={styles.winnerLabel}>WINNER</p>
               <p style={styles.winnerName}>{winner.name}</p>
               <p style={styles.winnerScore}>{winner.score} points</p>

@@ -9,6 +9,44 @@
   justify-content: center;
   padding: 15px;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Scanlines overlay */
+.results-page::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Winner flash overlay */
+.winner-flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #1DB954;
+  pointer-events: none;
+  z-index: 200;
+  animation: flash-out 0.7s ease-out forwards;
+}
+
+@keyframes flash-out {
+  0%   { opacity: 0.5; }
+  100% { opacity: 0; }
 }
 
 @media (max-width: 480px) {
@@ -152,6 +190,12 @@
   background: rgba(29, 185, 84, 0.15);
   border-color: #1DB954;
   font-weight: 700;
+  animation: winner-pulse 2s ease-in-out infinite;
+}
+
+@keyframes winner-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(29, 185, 84, 0.4); }
+  50%       { box-shadow: 0 0 24px rgba(29, 185, 84, 0.9), 0 0 48px rgba(29, 185, 84, 0.3); }
 }
 
 .score-item.me {
