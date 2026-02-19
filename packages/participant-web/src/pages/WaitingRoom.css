@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #0a0a0a;
   padding: 15px;
   overflow-x: hidden;
 }
@@ -15,10 +15,10 @@
 }
 
 .waiting-container {
-  background: white;
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0;
   padding: clamp(25px, 6vw, 40px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-width: 500px;
   width: 100%;
   text-align: center;
@@ -33,7 +33,7 @@
 
 .waiting-subtitle {
   font-size: clamp(1.2rem, 5vw, 1.5rem);
-  color: #333;
+  color: #ffffff;
   margin-bottom: clamp(20px, 5vw, 30px);
   font-weight: 700;
 }
@@ -44,26 +44,27 @@
 
 .your-name {
   font-size: clamp(1rem, 4vw, 1.2rem);
-  color: #666;
+  color: #a7a7a7;
   margin-bottom: 10px;
 }
 
 .connection-status {
   font-size: clamp(0.9rem, 3.5vw, 1rem);
-  color: #666;
+  color: #a7a7a7;
 }
 
 .session-info-box {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   margin-top: 20px;
   display: inline-block;
 }
 
 .session-label {
   font-size: 0.65rem;
-  color: #999;
+  color: #a7a7a7;
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -72,7 +73,7 @@
 
 .session-id {
   font-size: 0.75rem;
-  color: #666;
+  color: #1DB954;
   font-family: monospace;
   font-weight: 600;
   margin: 0;
@@ -87,13 +88,13 @@
 .count-number {
   font-size: clamp(2rem, 10vw, 3rem);
   font-weight: 800;
-  color: #667eea;
+  color: #1DB954;
   margin-bottom: 5px;
 }
 
 .count-label {
   font-size: clamp(1rem, 4vw, 1.1rem);
-  color: #666;
+  color: #a7a7a7;
 }
 
 .waiting-animation {
@@ -106,7 +107,7 @@
 .dot {
   width: 12px;
   height: 12px;
-  background: #667eea;
+  background: #1DB954;
   border-radius: 50%;
   animation: bounce 1.4s infinite ease-in-out both;
 }
@@ -130,6 +131,6 @@
 
 .waiting-message {
   font-size: clamp(0.9rem, 3.5vw, 1rem);
-  color: #999;
+  color: #a7a7a7;
   line-height: 1.6;
 }

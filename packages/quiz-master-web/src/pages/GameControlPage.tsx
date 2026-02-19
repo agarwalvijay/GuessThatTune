@@ -637,31 +637,33 @@ export function GameControlPage() {
                             style={{
                               padding: '12px',
                               marginBottom: '8px',
-                              borderRadius: '8px',
-                              backgroundColor: answer.isCorrect ? '#d4edda' : '#f8d7da',
+                              borderRadius: '0',
+                              backgroundColor: answer.isCorrect ? 'rgba(29, 185, 84, 0.15)' : 'rgba(255, 51, 51, 0.15)',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
-                              border: answer.isCorrect ? '2px solid #28a745' : '2px solid #dc3545',
+                              borderLeft: answer.isCorrect ? '4px solid #1DB954' : '4px solid #ff3333',
+                              border: answer.isCorrect ? '2px solid #1DB954' : '2px solid #ff3333',
                             }}
                           >
-                            <span style={{ fontWeight: 'bold', flex: 1 }}>{answer.participantName}</span>
-                            <span style={{ fontSize: '14px', flex: 2, textAlign: 'center' }}>
+                            <span style={{ fontWeight: 'bold', flex: 1, color: '#fff' }}>{answer.participantName}</span>
+                            <span style={{ fontSize: '14px', flex: 2, textAlign: 'center', color: '#a7a7a7' }}>
                               {answer.isCorrect || currentRoundData?.isComplete ? answer.selectedAnswer : '---'}
                             </span>
                             <span
                               style={{
                                 padding: '4px 8px',
-                                borderRadius: '4px',
+                                borderRadius: '0',
                                 fontSize: '12px',
                                 fontWeight: 'bold',
-                                backgroundColor: answer.isCorrect ? '#28a745' : '#dc3545',
-                                color: 'white',
+                                backgroundColor: answer.isCorrect ? '#1DB954' : '#ff3333',
+                                color: answer.isCorrect ? '#0a0a0a' : '#fff',
+                                textTransform: 'uppercase' as const,
                               }}
                             >
                               {answer.isCorrect ? '✓ Correct' : '✗ Wrong'}
                             </span>
-                            <span style={{ fontWeight: 'bold', marginLeft: '8px', minWidth: '50px', textAlign: 'right' }}>
+                            <span style={{ fontWeight: 'bold', marginLeft: '8px', minWidth: '50px', textAlign: 'right', color: '#fff' }}>
                               {answer.score > 0 ? '+' : ''}{answer.score}
                             </span>
                           </div>
@@ -881,9 +883,9 @@ export function GameControlPage() {
                     key={index}
                     style={{
                       padding: '12px',
-                      borderRadius: '8px',
-                      backgroundColor: '#f0f0f0',
-                      border: '2px solid #ddd',
+                      borderRadius: '0',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      border: '2px solid rgba(255, 255, 255, 0.1)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
@@ -892,12 +894,12 @@ export function GameControlPage() {
                     <span style={{
                       fontWeight: 'bold',
                       fontSize: '18px',
-                      color: '#667eea',
+                      color: '#1DB954',
                       minWidth: '24px',
                     }}>
                       {String.fromCharCode(65 + index)}
                     </span>
-                    <span style={{ fontSize: '14px', color: '#333' }}>{option}</span>
+                    <span style={{ fontSize: '14px', color: '#ffffff' }}>{option}</span>
                   </div>
                 ))}
               </div>
@@ -943,7 +945,7 @@ export function GameControlPage() {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     minHeight: '100vh',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#0a0a0a',
     padding: '20px',
   },
   content: {
@@ -960,7 +962,7 @@ const styles: Record<string, React.CSSProperties> = {
   appTitle: {
     fontSize: '28px',
     fontWeight: '800',
-    color: '#667eea',
+    color: '#1DB954',
     margin: 0,
     letterSpacing: '-0.5px',
   },
@@ -969,11 +971,11 @@ const styles: Record<string, React.CSSProperties> = {
     width: 'auto',
   },
   playbackCard: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    borderRadius: '20px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    border: '2px solid #1DB954',
+    borderRadius: '0',
     padding: '20px',
     marginBottom: '20px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
   },
   cardHeader: {
     display: 'flex',
@@ -982,12 +984,13 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '20px',
   },
   roundBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(29, 185, 84, 0.2)',
+    border: '2px solid #1DB954',
     padding: '6px 12px',
-    borderRadius: '12px',
+    borderRadius: '0',
     fontSize: '13px',
     fontWeight: '700',
-    color: 'white',
+    color: '#1DB954',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
   },
@@ -998,12 +1001,12 @@ const styles: Record<string, React.CSSProperties> = {
   controlButton: {
     width: '48px',
     height: '48px',
-    borderRadius: '24px',
-    backgroundColor: 'white',
-    border: 'none',
+    borderRadius: '0',
+    backgroundColor: 'transparent',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
     fontSize: '20px',
     cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+    color: '#ffffff',
   },
   timerSection: {
     marginBottom: '16px',
@@ -1011,41 +1014,41 @@ const styles: Record<string, React.CSSProperties> = {
   timerText: {
     fontSize: '16px',
     fontWeight: '600',
-    color: 'white',
+    color: '#ffffff',
     textAlign: 'center' as const,
     marginBottom: '8px',
   },
   progressBarContainer: {
     height: '6px',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: '3px',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '0',
     overflow: 'hidden' as const,
   },
   progressBar: {
     height: '100%',
-    backgroundColor: 'white',
-    borderRadius: '3px',
+    backgroundColor: '#1DB954',
+    borderRadius: '0',
     transition: 'width 0.1s linear',
   },
   revealButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'transparent',
     padding: '12px 24px',
-    borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.4)',
+    borderRadius: '0',
+    border: '2px solid rgba(255, 255, 255, 0.3)',
     fontSize: '15px',
     fontWeight: '600',
-    color: 'white',
+    color: '#ffffff',
     textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
+    letterSpacing: '1px',
     cursor: 'pointer',
     width: '100%',
   },
   songInfoCard: {
-    backgroundColor: 'white',
-    borderRadius: '16px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '0',
     padding: '20px',
     marginBottom: '20px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
     display: 'flex',
     gap: '20px',
     alignItems: 'center',
@@ -1053,9 +1056,9 @@ const styles: Record<string, React.CSSProperties> = {
   albumArtwork: {
     width: '120px',
     height: '120px',
-    borderRadius: '12px',
+    borderRadius: '0',
     objectFit: 'cover' as const,
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
     flexShrink: 0,
   },
   songDetails: {
@@ -1072,13 +1075,13 @@ const styles: Record<string, React.CSSProperties> = {
   songArtist: {
     fontSize: '17px',
     fontWeight: '600',
-    color: '#333',
+    color: '#ffffff',
     marginBottom: '6px',
     margin: 0,
   },
   songAlbum: {
     fontSize: '15px',
-    color: '#666',
+    color: '#a7a7a7',
     margin: 0,
   },
   section: {
@@ -1087,50 +1090,51 @@ const styles: Record<string, React.CSSProperties> = {
   sectionTitle: {
     fontSize: '16px',
     fontWeight: '600',
-    color: '#666',
+    color: '#a7a7a7',
     marginBottom: '12px',
     textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
+    letterSpacing: '1px',
   },
   qrToggle: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '0',
     padding: '14px',
     marginBottom: '12px',
-    border: '1px solid #f0f0f0',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
     fontSize: '15px',
     fontWeight: '600',
-    color: '#667eea',
+    color: '#1DB954',
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left' as const,
+    textTransform: 'none' as const,
   },
   qrCodeContainer: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
+    backgroundColor: '#ffffff',
+    borderRadius: '0',
     padding: '20px',
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
-    border: '1px solid #f0f0f0',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
   },
   joinUrl: {
     fontSize: '12px',
-    color: '#666',
+    color: '#333',
     marginTop: '12px',
     textAlign: 'center' as const,
     wordBreak: 'break-all' as const,
   },
   emptyState: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '0',
     padding: '32px',
     textAlign: 'center' as const,
-    border: '1px solid #e8e8e8',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
   },
   emptyText: {
     fontSize: '14px',
-    color: '#999',
+    color: '#a7a7a7',
     margin: 0,
   },
   twoColumnContainer: {
@@ -1149,31 +1153,35 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '8px',
   },
   buzzerCard: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '0',
     padding: '14px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-    border: '1px solid #f0f0f0',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
+    borderLeft: '4px solid rgba(255, 255, 255, 0.2)',
     textAlign: 'left' as const,
     width: '100%',
   },
   buzzerCardInactive: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     opacity: 0.6,
     cursor: 'default',
   },
   buzzerCardWinner: {
-    backgroundColor: '#f0f9f4',
-    borderColor: '#34d399',
-    borderWidth: '1.5px',
+    backgroundColor: 'rgba(29, 185, 84, 0.15)',
+    borderColor: '#1DB954',
+    borderLeftColor: '#1DB954',
+    borderWidth: '2px',
+    borderLeftWidth: '4px',
   },
   buzzerCardIncorrect: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#ef4444',
-    borderWidth: '1.5px',
+    backgroundColor: 'rgba(255, 51, 51, 0.15)',
+    borderColor: '#ff3333',
+    borderLeftColor: '#ff3333',
+    borderWidth: '2px',
+    borderLeftWidth: '4px',
   },
   buzzerInfo: {
     flex: 1,
@@ -1181,12 +1189,12 @@ const styles: Record<string, React.CSSProperties> = {
   buzzerName: {
     fontSize: '15px',
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#ffffff',
     marginBottom: '2px',
     margin: 0,
   },
   buzzerNameInactive: {
-    color: '#999',
+    color: '#a7a7a7',
   },
   buzzerTime: {
     fontSize: '13px',
@@ -1197,22 +1205,22 @@ const styles: Record<string, React.CSSProperties> = {
   winnerBadge: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#10b981',
+    color: '#1DB954',
   },
   incorrectBadge: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#ef4444',
+    color: '#ff3333',
   },
   buzzerActions: {
     display: 'flex',
     gap: '8px',
   },
   correctButton: {
-    backgroundColor: '#10b981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
+    backgroundColor: '#1DB954',
+    color: '#0a0a0a',
+    border: '2px solid #1DB954',
+    borderRadius: '0',
     padding: '8px 16px',
     fontSize: '16px',
     fontWeight: '600',
@@ -1220,10 +1228,10 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'all 0.2s',
   },
   incorrectButton: {
-    backgroundColor: '#ef4444',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
+    backgroundColor: '#ff3333',
+    color: '#ffffff',
+    border: '2px solid #ff3333',
+    borderRadius: '0',
     padding: '8px 16px',
     fontSize: '16px',
     fontWeight: '600',
@@ -1231,27 +1239,27 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'all 0.2s',
   },
   scoresList: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '0',
     overflow: 'hidden' as const,
-    border: '1px solid #f0f0f0',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
   },
   scoreCard: {
     display: 'flex',
     justifyContent: 'space-between',
     padding: '14px',
-    borderBottom: '1px solid #f5f5f5',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
   },
   scoreName: {
     fontSize: '15px',
-    color: '#1a1a1a',
+    color: '#ffffff',
     fontWeight: '500',
     margin: 0,
   },
   scorePoints: {
     fontSize: '15px',
     fontWeight: '700',
-    color: '#667eea',
+    color: '#1DB954',
     margin: 0,
   },
   controls: {
@@ -1263,27 +1271,32 @@ const styles: Record<string, React.CSSProperties> = {
   nextButton: {
     flex: 1,
     padding: '16px',
-    borderRadius: '12px',
-    backgroundColor: '#667eea',
-    color: 'white',
-    border: 'none',
+    borderRadius: '0',
+    backgroundColor: '#1DB954',
+    color: '#0a0a0a',
+    border: '2px solid #1DB954',
     fontSize: '16px',
     fontWeight: '600',
     cursor: 'pointer',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1px',
   },
   endButton: {
     padding: '16px',
-    borderRadius: '12px',
-    backgroundColor: 'white',
-    color: '#ef4444',
-    border: '1.5px solid #ef4444',
+    borderRadius: '0',
+    backgroundColor: 'transparent',
+    color: '#ff3333',
+    border: '2px solid #ff3333',
     fontSize: '16px',
     fontWeight: '600',
     cursor: 'pointer',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1px',
   },
   loadingCard: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '0',
     padding: '40px',
     textAlign: 'center' as const,
     maxWidth: '400px',
@@ -1291,7 +1304,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loadingText: {
     fontSize: '18px',
-    color: '#666',
+    color: '#a7a7a7',
     margin: 0,
   },
   countdownOverlay: {
@@ -1303,22 +1316,24 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 9999,
     pointerEvents: 'none' as const,
   },
   countdownNumber: {
     fontSize: '350px',
     fontWeight: '900',
-    color: 'rgba(255, 255, 255, 0.9)',
-    textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+    color: '#1DB954',
+    textShadow: '0 0 60px rgba(29, 185, 84, 0.5)',
     animation: 'countdownZoom 1s ease-out',
     userSelect: 'none' as const,
   },
   gameModeIndicator: {
     fontSize: '14px',
-    color: '#666',
+    color: '#a7a7a7',
     marginBottom: '8px',
     fontWeight: '500',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1px',
   },
 };

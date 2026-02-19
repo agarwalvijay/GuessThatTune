@@ -96,7 +96,7 @@ export function ResultsPage() {
             </p>
             <p className="waiting-text">🎮 Waiting for next game to start...</p>
             <p className="waiting-hint">Stay on this screen. You'll automatically join when the quiz master starts a new game!</p>
-            <p className="debug-info" style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+            <p className="debug-info" style={{ fontSize: '12px', color: '#a7a7a7', marginTop: '8px' }}>
               Session: {gameSession?.id?.substring(0, 8)}... | Status: {gameSession?.status}
             </p>
           </div>

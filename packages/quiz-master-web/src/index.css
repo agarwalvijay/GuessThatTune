@@ -1,3 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --bg-dark: #0a0a0a;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --text-main: #ffffff;
+  --text-muted: #a7a7a7;
+  --spotify-green: #1DB954;
+  --accent-magenta: #ff007f;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --correct: #1DB954;
+  --incorrect: #ff3333;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -5,9 +19,7 @@
 }
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -21,6 +33,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
 }
 
 #root {
@@ -32,11 +46,20 @@ button {
   cursor: pointer;
   transition: all 0.2s ease;
   outline: none;
+  background: transparent;
+  color: var(--text-main);
+  border: 2px solid var(--text-main);
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 button:hover {
+  background-color: var(--spotify-green);
+  border-color: var(--spotify-green);
+  color: var(--bg-dark);
+  box-shadow: 0 0 20px rgba(29, 185, 84, 0.4);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 button:active {
