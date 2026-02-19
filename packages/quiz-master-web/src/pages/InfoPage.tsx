@@ -34,10 +34,11 @@ export function InfoPage() {
             <li style={styles.listItem}>
               <strong>Configure Settings:</strong> Click the settings icon (⚙️) to adjust:
               <ul style={styles.subList}>
+                <li>Game mode (Multiple Choice or Buzzer)</li>
                 <li>Song duration (10-60 seconds)</li>
                 <li>Number of songs (5-30)</li>
                 <li>Wrong answer penalty (0-100%)</li>
-                <li>Buzzer countdown timer (1-10 seconds)</li>
+                <li>Buzzer countdown timer (1-10 seconds, Buzzer mode only)</li>
                 <li>Spotify playback device</li>
               </ul>
             </li>
@@ -52,19 +53,33 @@ export function InfoPage() {
             </li>
           </ol>
 
+          <h3 style={styles.subTitle}>Game Modes</h3>
+
+          <p style={styles.text}><strong>Multiple Choice (Default)</strong></p>
+          <p style={styles.text}>
+            Participants see 4 song title options and select the one they think is playing.
+            Answers are scored automatically — the faster you answer correctly, the more points you earn.
+            Wrong answers result in a penalty. The round ends when the first correct answer is submitted.
+          </p>
+
+          <p style={styles.text}><strong>Buzzer Mode</strong></p>
+          <p style={styles.text}>
+            Participants press a buzzer when they recognize the song. The quiz master then judges
+            whether the answer is correct or incorrect. A countdown timer starts when someone buzzes in.
+          </p>
+
           <h3 style={styles.subTitle}>For Participants</h3>
           <ol style={styles.list}>
-            <li style={styles.listItem}>Visit the join link or scan the QR code</li>
-            <li style={styles.listItem}>Enter your name</li>
-            <li style={styles.listItem}>Wait for the quiz master to start the game</li>
-            <li style={styles.listItem}>Press the buzz button when you recognize a song</li>
-            <li style={styles.listItem}>Answer correctly to earn points!</li>
+            <li style={styles.listItem}>Scan the QR code or visit the join link on your phone</li>
+            <li style={styles.listItem}>Enter your name and join the game</li>
+            <li style={styles.listItem}>Wait for the quiz master to start</li>
+            <li style={styles.listItem}>Listen to the song and answer as fast as you can</li>
           </ol>
 
           <h3 style={styles.subTitle}>Scoring</h3>
           <p style={styles.text}>
-            Points are awarded based on how quickly you buzz in. The faster you answer, the more points you earn!
-            Wrong answers result in a penalty based on the game settings.
+            Points are based on speed — the faster you answer correctly, the more points you earn (up to 60 points per song).
+            Wrong answers result in a penalty based on the game settings (default 25% of potential points).
           </p>
         </section>
 
