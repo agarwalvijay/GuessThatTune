@@ -246,16 +246,21 @@ export class GameSessionService {
     const correctAnswer = correctSong.answer.title;
     const otherSongs = allSongs.filter(s => s.id !== correctSongId);
     const wrongAnswers: string[] = [];
+    const usedIndices = new Set<number>();
 
-    // Get 3 unique wrong answers
-    while (wrongAnswers.length < 3 && otherSongs.length > 0) {
+    // Get 3 unique wrong answers without mutating otherSongs
+    while (wrongAnswers.length < 3 && usedIndices.size < otherSongs.length) {
       const randomIndex = Math.floor(Math.random() * otherSongs.length);
-      const wrongAnswer = otherSongs[randomIndex].answer.title;
 
+      if (usedIndices.has(randomIndex)) continue;
+
+      const wrongAnswer = otherSongs[randomIndex].answer.title;
       if (!wrongAnswers.includes(wrongAnswer) && wrongAnswer !== correctAnswer) {
         wrongAnswers.push(wrongAnswer);
+        usedIndices.add(randomIndex);
+      } else {
+        usedIndices.add(randomIndex);
       }
-      otherSongs.splice(randomIndex, 1);
     }
 
     // Shuffle [correct, wrong1, wrong2, wrong3]
