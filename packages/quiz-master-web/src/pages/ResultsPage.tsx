@@ -50,13 +50,13 @@ export function ResultsPage() {
   };
 
   return (
-    <div style={styles.container}>
+    <div className="results-cinematic" style={styles.container}>
       <div style={styles.content}>
         <h1 style={styles.appTitle}>Hear and Guess</h1>
 
         {/* Header with Winner */}
-        <div style={styles.header}>
-          <h2 style={styles.headerTitle}>Game Complete!</h2>
+        <div className="glass-card" style={styles.header}>
+          <h2 className="cinematic-title" style={styles.headerTitle}>Game Complete!</h2>
           {winner && (
             <div style={styles.winnerBadge}>
               <p style={styles.winnerLabel}>WINNER</p>
