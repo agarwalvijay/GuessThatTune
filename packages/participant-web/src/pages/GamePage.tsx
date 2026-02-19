@@ -40,6 +40,13 @@ export function GamePage() {
     }
   }, [gameSession?.status, navigate]);
 
+  // Clear selected answer when round changes
+  useEffect(() => {
+    if (gameSession?.currentRoundIndex !== undefined) {
+      setSelectedAnswer(null);
+    }
+  }, [gameSession?.currentRoundIndex, setSelectedAnswer]);
+
   const handleBuzz = async () => {
     if (buzzerDisabled || hasBuzzed || !sessionId) return;
 
