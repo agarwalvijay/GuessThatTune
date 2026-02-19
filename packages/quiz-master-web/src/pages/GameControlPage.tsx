@@ -56,6 +56,7 @@ export function GameControlPage() {
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
   const countdownTimerRef = useRef<number | null>(null);
+  const roundSetByApiRef = useRef<number | null>(null);
 
   // Keep screen awake during gameplay
   useWakeLock(true);
@@ -245,6 +246,12 @@ export function GameControlPage() {
         const currentSession = useAppStore.getState().gameSession;
 
         if (currentSession) {
+          // Skip if round was already set directly from API response
+          if (roundSetByApiRef.current === currentSession.currentRoundIndex) {
+            console.log('⏭️ Round already set from API, skipping socket-based setup');
+            return;
+          }
+
           console.log('Current round index after update:', currentSession.currentRoundIndex);
           const round = currentSession.rounds?.[currentSession.currentRoundIndex];
           const song = currentSession.songs?.[currentSession.currentRoundIndex];
@@ -255,7 +262,6 @@ export function GameControlPage() {
               roundIndex: currentSession.currentRoundIndex,
               song: song,
             });
-            // Don't call playSong here - the useEffect watching currentRound will do it
           } else {
             console.error('Round or song not found for index:', currentSession.currentRoundIndex);
           }
@@ -513,6 +519,7 @@ export function GameControlPage() {
           const song = result.session.songs?.[result.session.currentRoundIndex];
           if (song) {
             console.log('🎵 Setting up next round directly from API response');
+            roundSetByApiRef.current = result.session.currentRoundIndex;
             setCurrentRound({
               roundIndex: result.session.currentRoundIndex,
               song: song,
