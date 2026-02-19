@@ -41,10 +41,14 @@ export function GameControlPage() {
   const [isAwarding, setIsAwarding] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
+  const [waitingForDevice, setWaitingForDevice] = useState(false);
+
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
   const countdownTimerRef = useRef<number | null>(null);
   const roundSetByApiRef = useRef<number | null>(null);
+  const pendingSongRef = useRef<any>(null);
+  const devicePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Keep screen awake during gameplay
   useWakeLock(true);
@@ -171,21 +175,49 @@ export function GameControlPage() {
     }, 1000);
   };
 
-  // Cleanup countdown on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-      }
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (devicePollRef.current) clearInterval(devicePollRef.current);
     };
   }, []);
+
+  // Check for a Spotify player then play, or show blocking overlay if none found
+  const startRoundWhenReady = async (song: any) => {
+    if (!accessToken) return;
+    const devices = await apiService.getSpotifyDevices(accessToken);
+    if (devices.length > 0) {
+      playSong(song);
+      setIsPlaying(true);
+      return;
+    }
+    // No device — block and poll
+    pendingSongRef.current = song;
+    setWaitingForDevice(true);
+    if (devicePollRef.current) clearInterval(devicePollRef.current);
+    devicePollRef.current = setInterval(async () => {
+      const updatedDevices = await apiService.getSpotifyDevices(accessToken);
+      if (updatedDevices.length > 0) {
+        if (devicePollRef.current) {
+          clearInterval(devicePollRef.current);
+          devicePollRef.current = null;
+        }
+        setWaitingForDevice(false);
+        if (pendingSongRef.current) {
+          playSong(pendingSongRef.current);
+          setIsPlaying(true);
+          pendingSongRef.current = null;
+        }
+      }
+    }, 5000);
+  };
 
   // Play song when we have a round
   useEffect(() => {
     if (currentRound && !showAnswer) {
-      console.log('Round ready, starting playback');
-      playSong(currentRound.song);
-      setIsPlaying(true);
+      console.log('Round ready, checking for Spotify player');
+      startRoundWhenReady(currentRound.song);
     }
   }, [currentRound]);
 
@@ -354,10 +386,6 @@ export function GameControlPage() {
       await spotifyPlaybackService.playSong(uri, startPosition);
     } catch (error: any) {
       console.error('Error playing song:', error);
-      const errorMessage = error.message || 'Failed to play song';
-      if (errorMessage.includes('No Spotify devices found')) {
-        alert('Please open Spotify on your phone or computer first, then try again.');
-      }
     }
   };
 
@@ -937,6 +965,23 @@ export function GameControlPage() {
           </div>
         </div>
       )}
+
+      {/* No Spotify Device Overlay */}
+      {waitingForDevice && (
+        <div style={styles.deviceOverlay}>
+          <div style={styles.deviceOverlayCard}>
+            <div style={styles.deviceOverlayIcon}>🎵</div>
+            <h2 style={styles.deviceOverlayTitle}>No Spotify Player Detected</h2>
+            <p style={styles.deviceOverlayText}>
+              Open Spotify on your phone, tablet, or computer and play any song
+              for a moment to activate it.
+            </p>
+            <p style={styles.deviceOverlayHint}>
+              Checking automatically every 5 seconds — this will unlock as soon as a player is found.
+            </p>
+          </div>
+        </div>
+      )}
       </div>
     </>
   );
@@ -1335,5 +1380,53 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: '500',
     textTransform: 'uppercase' as const,
     letterSpacing: '1px',
+  },
+  deviceOverlay: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10000,
+    backdropFilter: 'blur(4px)',
+  },
+  deviceOverlayCard: {
+    backgroundColor: '#141414',
+    border: '2px solid rgba(255, 165, 0, 0.6)',
+    borderRadius: '0',
+    padding: '48px 40px',
+    maxWidth: '480px',
+    width: '90%',
+    textAlign: 'center' as const,
+    boxShadow: '0 0 60px rgba(255, 165, 0, 0.15)',
+  },
+  deviceOverlayIcon: {
+    fontSize: '64px',
+    marginBottom: '16px',
+  },
+  deviceOverlayTitle: {
+    fontSize: '24px',
+    fontWeight: '800',
+    color: '#ffa500',
+    marginBottom: '16px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '2px',
+    margin: '0 0 16px 0',
+  },
+  deviceOverlayText: {
+    fontSize: '16px',
+    color: '#ffffff',
+    lineHeight: '1.6',
+    margin: '0 0 20px 0',
+  },
+  deviceOverlayHint: {
+    fontSize: '13px',
+    color: '#a7a7a7',
+    margin: 0,
+    fontStyle: 'italic' as const,
   },
 };
