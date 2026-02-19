@@ -17,6 +17,9 @@ export function PlaylistSelectionPage() {
   const [tempNumberOfSongs, setTempNumberOfSongs] = useState(gameSettings.numberOfSongs);
   const [tempNegativePointsPercentage, setTempNegativePointsPercentage] = useState(gameSettings.negativePointsPercentage);
   const [tempBuzzerCountdownSeconds, setTempBuzzerCountdownSeconds] = useState(gameSettings.buzzerCountdownSeconds);
+  const [spotifyDevices, setSpotifyDevices] = useState<any[]>([]);
+  const [tempSelectedDeviceId, setTempSelectedDeviceId] = useState<string | undefined>(gameSettings.selectedDeviceId);
+  const [loadingDevices, setLoadingDevices] = useState(false);
 
   useEffect(() => {
     if (!accessToken) {
@@ -63,13 +66,33 @@ export function PlaylistSelectionPage() {
     navigate('/');
   };
 
-  const handleOpenSettings = () => {
+  const handleOpenSettings = async () => {
     setTempGameMode(gameSettings.gameMode || 'buzzer');
     setTempSongDuration(gameSettings.songDuration);
     setTempNumberOfSongs(gameSettings.numberOfSongs);
     setTempNegativePointsPercentage(gameSettings.negativePointsPercentage);
     setTempBuzzerCountdownSeconds(gameSettings.buzzerCountdownSeconds);
+    setTempSelectedDeviceId(gameSettings.selectedDeviceId);
     setShowSettings(true);
+
+    // Fetch Spotify devices
+    if (accessToken) {
+      setLoadingDevices(true);
+      try {
+        const devices = await apiService.getSpotifyDevices(accessToken);
+        setSpotifyDevices(devices);
+        if (!tempSelectedDeviceId && devices.length > 0) {
+          const activeDevice = devices.find((d: any) => d.is_active);
+          if (activeDevice) {
+            setTempSelectedDeviceId(activeDevice.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching devices:', error);
+      } finally {
+        setLoadingDevices(false);
+      }
+    }
   };
 
   const handleSaveSettings = () => {
@@ -79,6 +102,7 @@ export function PlaylistSelectionPage() {
       numberOfSongs: tempNumberOfSongs,
       negativePointsPercentage: tempNegativePointsPercentage,
       buzzerCountdownSeconds: tempBuzzerCountdownSeconds,
+      selectedDeviceId: tempSelectedDeviceId,
     });
     setShowSettings(false);
   };
@@ -234,6 +258,43 @@ export function PlaylistSelectionPage() {
                 <span>1s</span>
                 <span>10s</span>
               </div>
+            </div>
+
+            <div style={styles.settingGroup}>
+              <label style={styles.settingLabel}>
+                Spotify Playback Device
+              </label>
+              <p style={styles.settingDescription}>
+                Select which device to use for playing music
+              </p>
+              {loadingDevices ? (
+                <p style={styles.settingDescription}>Loading devices...</p>
+              ) : spotifyDevices.length > 0 ? (
+                <div style={styles.deviceList}>
+                  {spotifyDevices.map((device: any) => (
+                    <label key={device.id} style={styles.deviceOption}>
+                      <input
+                        type="radio"
+                        name="device"
+                        value={device.id}
+                        checked={tempSelectedDeviceId === device.id}
+                        onChange={() => setTempSelectedDeviceId(device.id)}
+                        style={styles.radio}
+                      />
+                      <div style={styles.deviceInfo}>
+                        <span style={styles.deviceName}>{device.name}</span>
+                        <span style={styles.deviceType}>
+                          {device.type} {device.is_active && '• Active'}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p style={styles.settingDescription}>
+                  No devices found. Open Spotify on your phone/computer and play a song.
+                </p>
+              )}
             </div>
 
             <div style={styles.modalActions}>
@@ -543,6 +604,44 @@ const styles: Record<string, React.CSSProperties> = {
   },
   trackCount: {
     fontSize: '14px',
+    color: '#666',
+  },
+  deviceList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '8px',
+    marginTop: '8px',
+  },
+  deviceOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    border: '2px solid transparent',
+    transition: 'all 0.2s',
+  },
+  radio: {
+    cursor: 'pointer',
+    width: '18px',
+    height: '18px',
+    accentColor: '#667eea',
+  },
+  deviceInfo: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '2px',
+    flex: 1,
+  },
+  deviceName: {
+    fontSize: '15px',
+    fontWeight: '600' as const,
+    color: '#333',
+  },
+  deviceType: {
+    fontSize: '12px',
     color: '#666',
   },
   emptyState: {
