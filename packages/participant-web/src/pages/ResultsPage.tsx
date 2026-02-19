@@ -50,7 +50,7 @@ export function ResultsPage() {
       <div className="results-container">
         <div className="results-header">
           <img src="/logo.png" alt="Hear and Guess" className="results-logo" />
-          <h1 className="results-title">Game Over!</h1>
+          <h1 className="results-title glitch-title" data-text="Game Over!">Game Over!</h1>
           {isWinner && <div className="winner-crown">👑</div>}
         </div>
 
