@@ -3,6 +3,7 @@ export const CLIENT_EVENTS = {
   JOIN_GAME: 'join_game',
   LEAVE_GAME: 'leave_game',
   BUZZER_PRESSED: 'buzzer_pressed',
+  MULTIPLE_CHOICE_ANSWER: 'multiple_choice_answer',
 } as const;
 
 // Server -> Client Events
@@ -12,6 +13,7 @@ export const SERVER_EVENTS = {
   PARTICIPANT_LEFT: 'participant_left',
   PARTICIPANT_RECONNECTED: 'participant_reconnected',
   BUZZER_EVENT: 'buzzer_event',
+  MULTIPLE_CHOICE_SUBMITTED: 'multiple_choice_submitted',
   SONG_STARTED: 'song_started',
   ROUND_ENDED: 'round_ended',
   SCORE_UPDATE: 'score_update',

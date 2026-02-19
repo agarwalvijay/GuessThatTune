@@ -24,6 +24,14 @@ interface ParticipantState {
   setBuzzed: (buzzed: boolean) => void;
   setBuzzerDisabled: (disabled: boolean) => void;
 
+  // Multiple choice state
+  multipleChoiceOptions: string[];
+  selectedAnswer: string | null;
+  hasAnswered: boolean;
+  setMultipleChoiceOptions: (options: string[]) => void;
+  setSelectedAnswer: (answer: string | null) => void;
+  setHasAnswered: (answered: boolean) => void;
+
   // Scores
   myScore: number;
   setMyScore: (score: number) => void;
@@ -49,6 +57,9 @@ export const useParticipantStore = create<ParticipantState>((set) => ({
   currentRound: null,
   hasBuzzed: false,
   buzzerDisabled: false,
+  multipleChoiceOptions: [],
+  selectedAnswer: null,
+  hasAnswered: false,
   myScore: 0,
   isConnected: false,
   error: null,
@@ -61,6 +72,9 @@ export const useParticipantStore = create<ParticipantState>((set) => ({
   setCurrentRound: (round) => set({ currentRound: round }),
   setBuzzed: (buzzed) => set({ hasBuzzed: buzzed }),
   setBuzzerDisabled: (disabled) => set({ buzzerDisabled: disabled }),
+  setMultipleChoiceOptions: (options) => set({ multipleChoiceOptions: options }),
+  setSelectedAnswer: (answer) => set({ selectedAnswer: answer }),
+  setHasAnswered: (answered) => set({ hasAnswered: answered }),
   setMyScore: (score) => set({ myScore: score }),
   setConnected: (connected) => set({ isConnected: connected }),
   setError: (error) => set({ error }),
@@ -74,6 +88,9 @@ export const useParticipantStore = create<ParticipantState>((set) => ({
       currentRound: null,
       hasBuzzed: false,
       buzzerDisabled: false,
+      multipleChoiceOptions: [],
+      selectedAnswer: null,
+      hasAnswered: false,
       myScore: 0,
       isConnected: false,
       error: null,

@@ -22,6 +22,7 @@ export function GameSetupPage() {
   const [error, setError] = useState<string | null>(null);
   const [hostName] = useState('Quiz Master');
   const [participants, setParticipants] = useState<Array<{ id: string; name: string }>>([]);
+  const [currentGameMode, setCurrentGameMode] = useState<'buzzer' | 'multiple_choice'>(gameSettings.gameMode || 'buzzer');
 
   // Use settings from store
   const { songDuration, numberOfSongs, negativePointsPercentage } = gameSettings;
@@ -147,6 +148,7 @@ export function GameSetupPage() {
           playlistName: selectedPlaylist.name,
           songs: shuffledSongs,
           settings: {
+            gameMode: currentGameMode,
             songDuration,
             numberOfSongs: Math.min(numberOfSongs, shuffledSongs.length),
             negativePointsPercentage,
@@ -163,9 +165,12 @@ export function GameSetupPage() {
         negativePointsPercentage,
         buzzerCountdownSeconds: gameSettings.buzzerCountdownSeconds,
       });
+
+      return session; // Return the session so it can be used immediately
     } catch (err: any) {
       console.error('Error creating game session:', err);
       setError('Failed to create game session. Please try again.');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -175,13 +180,26 @@ export function GameSetupPage() {
     if (!gameSession) return;
 
     try {
-      await apiService.startGameSession(gameSession.id);
+      let sessionToStart = gameSession;
+
+      // If game mode changed, recreate the session with new settings
+      if (currentGameMode !== gameSession.settings.gameMode) {
+        console.log('🔄 Game mode changed, recreating session...');
+        const newSession = await createGameSession();
+        if (!newSession) {
+          console.error('Failed to recreate session');
+          return;
+        }
+        sessionToStart = newSession;
+      }
+
+      await apiService.startGameSession(sessionToStart.id);
 
       // Track game started
       analyticsService.trackGameStarted({
-        sessionId: gameSession.id,
+        sessionId: sessionToStart.id,
         numberOfParticipants: participants.length,
-        numberOfSongs: gameSession.settings.numberOfSongs,
+        numberOfSongs: sessionToStart.settings.numberOfSongs,
       });
 
       navigate('/game-control');
@@ -235,28 +253,45 @@ export function GameSetupPage() {
           <div style={styles.qrCard}>
             {gameSession && (
               <>
-                <QRCodeSVG value={joinUrl} size={250} level="H" />
+                <QRCodeSVG
+                  value={joinUrl}
+                  size={250}
+                  level="H"
+                  imageSettings={{
+                    src: "/logo.png",
+                    height: 50,
+                    width: 50,
+                    excavate: true,
+                  }}
+                />
                 <p style={styles.joinUrl}>{joinUrl}</p>
               </>
             )}
           </div>
         </div>
 
-        <div style={styles.participantsSection}>
-          <h2 style={styles.participantsTitle}>
-            Participants ({participants.length})
-          </h2>
-          <div style={styles.participantsList}>
-            {participants.length === 0 ? (
-              <p style={styles.emptyText}>Waiting for participants to join...</p>
-            ) : (
-              participants.map((participant) => (
-                <div key={participant.id} style={styles.participantCard}>
-                  <span style={styles.participantIcon}>👤</span>
-                  <span style={styles.participantName}>{participant.name}</span>
-                </div>
-              ))
-            )}
+        {/* Game Mode Toggle */}
+        <div style={styles.gameModeSection}>
+          <label style={styles.gameModeLabel}>Game Mode</label>
+          <div style={styles.gameModeButtons}>
+            <button
+              onClick={() => setCurrentGameMode('buzzer')}
+              style={{
+                ...styles.gameModeButton,
+                ...(currentGameMode === 'buzzer' ? styles.gameModeButtonActive : {}),
+              }}
+            >
+              🔔 Buzzer
+            </button>
+            <button
+              onClick={() => setCurrentGameMode('multiple_choice')}
+              style={{
+                ...styles.gameModeButton,
+                ...(currentGameMode === 'multiple_choice' ? styles.gameModeButtonActive : {}),
+              }}
+            >
+              📝 Multiple Choice
+            </button>
           </div>
         </div>
 
@@ -267,6 +302,20 @@ export function GameSetupPage() {
           <button onClick={handleStartGame} style={styles.button}>
             Start Game
           </button>
+        </div>
+
+        <div style={styles.participantsSection}>
+          <h2 style={styles.participantsTitle}>
+            Participants ({participants.length})
+          </h2>
+          <div style={styles.participantsList}>
+            {participants.map((participant) => (
+              <div key={participant.id} style={styles.participantCard}>
+                <span style={styles.participantIcon}>👤</span>
+                <span style={styles.participantName}>{participant.name}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -365,10 +414,46 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     padding: '20px',
   },
+  gameModeSection: {
+    marginBottom: '24px',
+    textAlign: 'center',
+  },
+  gameModeLabel: {
+    display: 'block',
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: '12px',
+  },
+  gameModeButtons: {
+    display: 'flex',
+    gap: '8px',
+    justifyContent: 'center',
+  },
+  gameModeButton: {
+    flex: '1',
+    padding: '12px 16px',
+    border: '2px solid #ddd',
+    borderRadius: '12px',
+    backgroundColor: 'white',
+    cursor: 'pointer',
+    fontSize: '15px',
+    fontWeight: '600',
+    transition: 'all 0.2s',
+    color: '#333',
+    whiteSpace: 'nowrap',
+  },
+  gameModeButtonActive: {
+    borderColor: '#1DB954',
+    backgroundColor: '#f0fdf4',
+    color: '#1DB954',
+  },
   actions: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'center',
     gap: '16px',
+    marginBottom: '32px',
   },
   button: {
     backgroundColor: '#1DB954',

@@ -26,6 +26,17 @@ interface BuzzerEvent {
   isCorrect?: boolean;
 }
 
+interface MultipleChoiceAnswer {
+  id: string;
+  participantId: string;
+  participantName: string;
+  selectedAnswer: string;
+  elapsedSeconds: number;
+  score: number;
+  isCorrect: boolean;
+  answerTime: number;
+}
+
 export function GameControlPage() {
   const navigate = useNavigate();
   const { accessToken, gameSession, setGameSession } = useAppStore();
@@ -40,6 +51,7 @@ export function GameControlPage() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAwarding, setIsAwarding] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [mcAnswers, setMcAnswers] = useState<MultipleChoiceAnswer[]>([]);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
@@ -119,6 +131,7 @@ export function GameControlPage() {
       socketService.off('score_update');
       socketService.off('game_ended');
       socketService.off('game_state_update');
+      socketService.off('multiple_choice_submitted');
 
       if (gameSession) {
         socketService.leaveSession(gameSession.id);
@@ -252,6 +265,7 @@ export function GameControlPage() {
       // Reset UI state for new round immediately
       setShowAnswer(false);
       setBuzzerEvents([]);
+      setMcAnswers([]);
       setCountdown(null);
       if (countdownTimerRef.current) {
         clearInterval(countdownTimerRef.current);
@@ -293,6 +307,11 @@ export function GameControlPage() {
       startCountdown(countdownSeconds);
     });
 
+    socketService.on('multiple_choice_submitted', (data: { answer: MultipleChoiceAnswer; participantId: string }) => {
+      console.log('📝 MC answer received:', data.answer.participantName, data.answer.isCorrect ? '✓' : '✗');
+      setMcAnswers((prev) => [...prev, data.answer]);
+    });
+
     socketService.onRoundEnded((data) => {
       console.log('Round ended:', data);
       setShowAnswer(true);
@@ -318,15 +337,20 @@ export function GameControlPage() {
       console.log('Session status:', data.session.status);
       setGameSession(data.session);
 
-      // Sync local buzzerEvents with the current round's buzzer events from the session
+      // Sync local state with the current round data from the session
       if (data.session.rounds && data.session.currentRoundIndex >= 0) {
         const currentRoundData = data.session.rounds[data.session.currentRoundIndex];
-        if (currentRoundData && currentRoundData.buzzerEvents) {
-          // Update local buzzerEvents to include isCorrect status from backend
-          setBuzzerEvents(currentRoundData.buzzerEvents.map((event, index) => ({
-            ...event,
-            position: index + 1,
-          })));
+        if (currentRoundData) {
+          if (currentRoundData.buzzerEvents) {
+            // Update local buzzerEvents to include isCorrect status from backend
+            setBuzzerEvents(currentRoundData.buzzerEvents.map((event, index) => ({
+              ...event,
+              position: index + 1,
+            })));
+          }
+          if (currentRoundData.multipleChoiceAnswers) {
+            setMcAnswers(currentRoundData.multipleChoiceAnswers);
+          }
         }
       }
     });
@@ -498,6 +522,7 @@ export function GameControlPage() {
           // Reset UI state for new round
           setShowAnswer(false);
           setBuzzerEvents([]);
+          setMcAnswers([]);
           setElapsedSeconds(0);
           setTimeRemaining(result.session.settings.songDuration);
         }
@@ -605,89 +630,133 @@ export function GameControlPage() {
           <h1 style={styles.appTitle}>Hear and Guess</h1>
         </div>
 
-        {/* Two Column Layout: Buzzer Events & Scores */}
+        {/* Game Mode Indicator */}
+        <div style={styles.gameModeIndicator}>
+          Mode: {gameSession?.settings?.gameMode === 'multiple_choice' ? '📝 Multiple Choice' : '🔔 Buzzer'}
+        </div>
+
+        {/* Two Column Layout: Buzzer Events/MC Answers & Scores */}
         <div style={styles.twoColumnContainer}>
-          {/* Left Column: Who Buzzed In */}
+          {/* Left Column */}
           <div style={styles.column}>
-            <h2 style={styles.sectionTitle}>Who Buzzed In</h2>
-            <div style={styles.buzzerListContainer}>
-              {buzzerEvents.length > 0 ? (
-                (() => {
-                  // Create a map of buzzer events for quick lookup
-                  const buzzerMap = new Map(
-                    buzzerEvents.map((event) => [
-                      event.participantId,
-                      { time: event.elapsedSeconds, position: event.position },
-                    ])
-                  );
-
-                  // Filter to only show participants who have buzzed
-                  const buzzedParticipants = (gameSession.participants || []).filter((p) =>
-                    buzzerMap.has(p.id)
-                  );
-
-                  // Sort by buzz position (earlier buzz first)
-                  const sortedParticipants = buzzedParticipants.sort((a, b) => {
-                    const aPosition = buzzerMap.get(a.id)!.position;
-                    const bPosition = buzzerMap.get(b.id)!.position;
-                    return aPosition - bPosition;
-                  });
-
-                  return sortedParticipants.map((participant) => {
-                    const buzzerData = buzzerMap.get(participant.id)!;
-                    const buzzerEvent = buzzerEvents.find(e => e.participantId === participant.id);
-                    const isCorrect = buzzerEvent?.isCorrect === true;
-                    const isIncorrect = buzzerEvent?.isCorrect === false;
-                    const hasBeenJudged = winnerId === participant.id || isCorrect || isIncorrect;
-
-                    return (
+            {gameSession?.settings?.gameMode === 'multiple_choice' ? (
+              <>
+                <h2 style={styles.sectionTitle}>Answers</h2>
+                <div style={styles.buzzerListContainer}>
+                  {mcAnswers.length > 0 ? (
+                    mcAnswers.map((answer) => (
                       <div
-                        key={participant.id}
+                        key={answer.id}
                         style={{
                           ...styles.buzzerCard,
-                          ...(isCorrect ? styles.buzzerCardWinner : {}),
-                          ...(isIncorrect ? styles.buzzerCardIncorrect : {}),
+                          ...(answer.isCorrect ? styles.buzzerCardWinner : styles.buzzerCardIncorrect),
                         }}
                       >
                         <div style={styles.buzzerInfo}>
-                          <p style={styles.buzzerName}>
-                            {participant.name}
+                          <p style={styles.buzzerName}>{answer.participantName}</p>
+                          <p style={styles.buzzerTime}>
+                            {answer.selectedAnswer} ({answer.elapsedSeconds.toFixed(1)}s)
                           </p>
-                          <p style={styles.buzzerTime}>🔔 {buzzerData.time.toFixed(2)}s</p>
                         </div>
-                        {!hasBeenJudged ? (
-                          <div style={styles.buzzerActions}>
-                            <button
-                              style={styles.correctButton}
-                              onClick={() => handleAwardPoints(participant.id, participant.name)}
-                              disabled={isAwarding}
-                            >
-                              ✓
-                            </button>
-                            <button
-                              style={styles.incorrectButton}
-                              onClick={() => handleMarkIncorrect(participant.id, participant.name)}
-                              disabled={isAwarding}
-                            >
-                              ✗
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            {isCorrect && <span style={styles.winnerBadge}>✓ Correct</span>}
-                            {isIncorrect && <span style={styles.incorrectBadge}>✗ Wrong</span>}
-                          </>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={answer.isCorrect ? styles.winnerBadge : styles.incorrectBadge}>
+                            {answer.isCorrect ? '✓ Correct' : '✗ Wrong'}
+                          </span>
+                          <span style={{
+                            fontWeight: '700',
+                            color: answer.score > 0 ? '#10b981' : '#ef4444',
+                            fontSize: '14px',
+                          }}>
+                            {answer.score > 0 ? '+' : ''}{answer.score}
+                          </span>
+                        </div>
                       </div>
-                    );
-                  });
-                })()
-              ) : (
-                <div style={styles.emptyState}>
-                  <p style={styles.emptyText}>No one has buzzed in yet</p>
+                    ))
+                  ) : (
+                    <div style={styles.emptyState}>
+                      <p style={styles.emptyText}>Waiting for answers...</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <>
+                <h2 style={styles.sectionTitle}>Who Buzzed In</h2>
+                <div style={styles.buzzerListContainer}>
+                  {buzzerEvents.length > 0 ? (
+                    (() => {
+                      const buzzerMap = new Map(
+                        buzzerEvents.map((event) => [
+                          event.participantId,
+                          { time: event.elapsedSeconds, position: event.position },
+                        ])
+                      );
+
+                      const buzzedParticipants = (gameSession.participants || []).filter((p) =>
+                        buzzerMap.has(p.id)
+                      );
+
+                      const sortedParticipants = buzzedParticipants.sort((a, b) => {
+                        const aPosition = buzzerMap.get(a.id)!.position;
+                        const bPosition = buzzerMap.get(b.id)!.position;
+                        return aPosition - bPosition;
+                      });
+
+                      return sortedParticipants.map((participant) => {
+                        const buzzerData = buzzerMap.get(participant.id)!;
+                        const buzzerEvent = buzzerEvents.find(e => e.participantId === participant.id);
+                        const isCorrect = buzzerEvent?.isCorrect === true;
+                        const isIncorrect = buzzerEvent?.isCorrect === false;
+                        const hasBeenJudged = winnerId === participant.id || isCorrect || isIncorrect;
+
+                        return (
+                          <div
+                            key={participant.id}
+                            style={{
+                              ...styles.buzzerCard,
+                              ...(isCorrect ? styles.buzzerCardWinner : {}),
+                              ...(isIncorrect ? styles.buzzerCardIncorrect : {}),
+                            }}
+                          >
+                            <div style={styles.buzzerInfo}>
+                              <p style={styles.buzzerName}>{participant.name}</p>
+                              <p style={styles.buzzerTime}>🔔 {buzzerData.time.toFixed(2)}s</p>
+                            </div>
+                            {!hasBeenJudged ? (
+                              <div style={styles.buzzerActions}>
+                                <button
+                                  style={styles.correctButton}
+                                  onClick={() => handleAwardPoints(participant.id, participant.name)}
+                                  disabled={isAwarding}
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  style={styles.incorrectButton}
+                                  onClick={() => handleMarkIncorrect(participant.id, participant.name)}
+                                  disabled={isAwarding}
+                                >
+                                  ✗
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                {isCorrect && <span style={styles.winnerBadge}>✓ Correct</span>}
+                                {isIncorrect && <span style={styles.incorrectBadge}>✗ Wrong</span>}
+                              </>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()
+                  ) : (
+                    <div style={styles.emptyState}>
+                      <p style={styles.emptyText}>No one has buzzed in yet</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Right Column: Scores */}
@@ -1213,5 +1282,11 @@ const styles: Record<string, React.CSSProperties> = {
     textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
     animation: 'countdownZoom 1s ease-out',
     userSelect: 'none' as const,
+  },
+  gameModeIndicator: {
+    fontSize: '14px',
+    color: '#666',
+    marginBottom: '8px',
+    fontWeight: '500',
   },
 };

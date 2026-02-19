@@ -18,9 +18,9 @@ class SocketService {
     console.log('🔌 Initializing socket connection to:', BACKEND_URL);
 
     this.socket = io(BACKEND_URL, {
-      transports: ['websocket', 'polling'],
+      // Default: start with polling, upgrade to WebSocket
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
     });
 
@@ -29,6 +29,20 @@ class SocketService {
       const store = useParticipantStore.getState();
       store.setConnected(true);
       store.setError(null);
+
+      // Re-join game after reconnect (new socket = lost server-side association)
+      const { sessionId, participantId } = store;
+      if (sessionId && participantId && this.socket) {
+        console.log(`🔄 Reconnected — rejoining session ${sessionId} as ${participantId}`);
+        this.socket.emit('rejoin_game', { sessionId, participantId }, (response) => {
+          if (response.success) {
+            console.log('✅ Rejoined game after reconnect');
+          } else {
+            console.error('❌ Rejoin failed:', response.error);
+            store.setError('Lost connection to game. Please rejoin.');
+          }
+        });
+      }
     });
 
     this.socket.on('disconnect', () => {
@@ -59,6 +73,14 @@ class SocketService {
 
       store.setGameSession(session);
 
+      // Extract multiple choice options for current round
+      if (session.settings.gameMode === 'multiple_choice') {
+        const currentRound = session.rounds?.[session.currentRoundIndex];
+        if (currentRound?.multipleChoiceOptions) {
+          store.setMultipleChoiceOptions(currentRound.multipleChoiceOptions);
+        }
+      }
+
       // Update my score if available
       const participantId = store.participantId;
       if (participantId && session.scores?.[participantId] !== undefined) {
@@ -86,6 +108,8 @@ class SocketService {
       console.log('🎵 Song started:', roundId);
       const store = useParticipantStore.getState();
       store.setBuzzed(false);
+      store.setHasAnswered(false);
+      store.setSelectedAnswer(null);
     });
 
     this.socket.on(SERVER_EVENTS.ROUND_ENDED, ({ roundId, winnerName, correctAnswer }) => {
@@ -94,6 +118,8 @@ class SocketService {
       console.log('Correct answer:', `${correctAnswer.title} - ${correctAnswer.artist}`);
       const store = useParticipantStore.getState();
       store.setBuzzed(false);
+      store.setHasAnswered(false);
+      store.setSelectedAnswer(null);
     });
 
     this.socket.on(SERVER_EVENTS.SCORE_UPDATE, ({ scores }) => {
@@ -161,6 +187,32 @@ class SocketService {
           resolve({ success: true });
         } else {
           console.error('❌ Buzz failed:', response.error);
+          resolve({ success: false, error: response.error });
+        }
+      });
+    });
+  }
+
+  async submitMultipleChoiceAnswer(
+    sessionId: string,
+    selectedAnswer: string
+  ): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      if (!this.socket) {
+        resolve({ success: false, error: 'Socket not initialized' });
+        return;
+      }
+
+      console.log('📝 Submitting answer:', selectedAnswer);
+
+      this.socket.emit('multiple_choice_answer', { sessionId, selectedAnswer }, (response) => {
+        if (response.success) {
+          console.log('✅ Answer submitted!');
+          const store = useParticipantStore.getState();
+          store.setHasAnswered(true);
+          resolve({ success: true });
+        } else {
+          console.error('❌ Answer failed:', response.error);
           resolve({ success: false, error: response.error });
         }
       });
