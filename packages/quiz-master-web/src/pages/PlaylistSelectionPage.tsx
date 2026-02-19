@@ -5,6 +5,7 @@ import { apiService } from '../services/apiService';
 import { spotifyAuthService } from '../services/spotifyAuthService';
 import { spotifyPlaybackService } from '../services/spotifyPlaybackService';
 import type { Playlist } from '../store/appStore';
+import { useSpotifyDeviceCheck } from '../hooks/useSpotifyDeviceCheck';
 
 export function PlaylistSelectionPage() {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ export function PlaylistSelectionPage() {
   const [spotifyDevices, setSpotifyDevices] = useState<any[]>([]);
   const [tempSelectedDeviceId, setTempSelectedDeviceId] = useState<string | undefined>(gameSettings.selectedDeviceId);
   const [loadingDevices, setLoadingDevices] = useState(false);
+  const hasSpotifyDevice = useSpotifyDeviceCheck(accessToken);
 
   useEffect(() => {
     if (!accessToken) {
@@ -137,6 +139,13 @@ export function PlaylistSelectionPage() {
           </button>
         </div>
       </div>
+
+      {/* Spotify device warning */}
+      {hasSpotifyDevice === false && (
+        <div style={styles.deviceWarning}>
+          ⚠️ No Spotify player detected. Open Spotify on a device and play something for a moment to activate it, then it will appear here automatically.
+        </div>
+      )}
 
       {/* Settings Modal */}
       {showSettings && (
@@ -358,6 +367,18 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     backgroundColor: '#0a0a0a',
     padding: '20px',
+  },
+  deviceWarning: {
+    maxWidth: '1200px',
+    margin: '0 auto 20px',
+    padding: '12px 16px',
+    backgroundColor: 'rgba(255, 165, 0, 0.1)',
+    border: '2px solid rgba(255, 165, 0, 0.6)',
+    borderRadius: '0',
+    color: '#ffa500',
+    fontSize: '14px',
+    fontWeight: '600',
+    lineHeight: '1.5',
   },
   header: {
     display: 'flex',

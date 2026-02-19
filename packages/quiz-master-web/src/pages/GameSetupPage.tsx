@@ -7,6 +7,7 @@ import { socketService } from '../services/socketService';
 import { config } from '../config/environment';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { analyticsService } from '../services/analyticsService';
+import { useSpotifyDeviceCheck } from '../hooks/useSpotifyDeviceCheck';
 
 export function GameSetupPage() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export function GameSetupPage() {
   const [hostName] = useState('Quiz Master');
   const [participants, setParticipants] = useState<Array<{ id: string; name: string }>>([]);
   const [currentGameMode, setCurrentGameMode] = useState<'buzzer' | 'multiple_choice'>(gameSettings.gameMode || 'buzzer');
+  const hasSpotifyDevice = useSpotifyDeviceCheck(accessToken);
 
   // Use settings from store
   const { songDuration, numberOfSongs, negativePointsPercentage } = gameSettings;
@@ -247,6 +249,14 @@ export function GameSetupPage() {
       <div style={styles.content}>
         <img src="/logo.png" alt="Hear and Guess" style={styles.logo} />
         <h1 style={styles.title}>Waiting for Players</h1>
+
+        {/* Spotify device warning */}
+        {hasSpotifyDevice === false && (
+          <div style={styles.deviceWarning}>
+            ⚠️ No Spotify player detected. Open Spotify on a device and play something for a moment to activate it, then it will appear here automatically.
+          </div>
+        )}
+
         <p style={styles.subtitle}>
           Playlist: <strong>{selectedPlaylist?.name}</strong>
         </p>
@@ -332,6 +342,18 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  deviceWarning: {
+    padding: '12px 16px',
+    marginBottom: '20px',
+    backgroundColor: 'rgba(255, 165, 0, 0.1)',
+    border: '2px solid rgba(255, 165, 0, 0.6)',
+    borderRadius: '0',
+    color: '#ffa500',
+    fontSize: '14px',
+    fontWeight: '600',
+    lineHeight: '1.5',
+    textAlign: 'left' as const,
   },
   content: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
