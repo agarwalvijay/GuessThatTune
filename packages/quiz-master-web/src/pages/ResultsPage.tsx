@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
 import { useWakeLock } from '../hooks/useWakeLock';
-import './ResultsPage.css';
 
 export function ResultsPage() {
   const navigate = useNavigate();
@@ -57,7 +56,7 @@ export function ResultsPage() {
 
         {/* Header with Winner */}
         <div style={styles.header}>
-          <h2 className="glitch-title" data-text="Game Complete!" style={styles.headerTitle}>Game Complete!</h2>
+          <h2 style={styles.headerTitle}>Game Complete!</h2>
           {winner && (
             <div style={styles.winnerBadge}>
               <p style={styles.winnerLabel}>WINNER</p>
