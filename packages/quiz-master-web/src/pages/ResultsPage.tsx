@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
 import { useWakeLock } from '../hooks/useWakeLock';
+import './ResultsPage.css';
 
 export function ResultsPage() {
   const navigate = useNavigate();
@@ -53,13 +54,13 @@ export function ResultsPage() {
     <div className="results-cinematic" style={styles.container}>
       <div className="winner-flash" />
       <div style={styles.content}>
-        <h1 style={styles.appTitle}>Hear and Guess</h1>
+        <h1 className="reveal-title" style={styles.appTitle}>Hear and Guess</h1>
 
         {/* Header with Winner */}
-        <div className="glass-card" style={styles.header}>
+        <div className="glass-card reveal-header" style={styles.header}>
           <h2 className="cinematic-title" style={styles.headerTitle}>Game Complete!</h2>
           {winner && (
-            <div className="winner-pulse" style={styles.winnerBadge}>
+            <div className="winner-pulse reveal-winner" style={styles.winnerBadge}>
               <p style={styles.winnerLabel}>WINNER</p>
               <p style={styles.winnerName}>{winner.name}</p>
               <p style={styles.winnerScore}>{winner.score} points</p>
@@ -68,7 +69,7 @@ export function ResultsPage() {
         </div>
 
         {/* Final Standings */}
-        <div style={styles.section}>
+        <div className="reveal-scores" style={styles.section}>
           <h2 style={styles.sectionTitle}>Final Standings</h2>
           <div style={styles.scoresList}>
             {finalScores.map((participant, index) => (
@@ -77,7 +78,9 @@ export function ResultsPage() {
                 style={{
                   ...styles.scoreCard,
                   ...(index === 0 ? styles.scoreCardWinner : {}),
+                  animationDelay: `${1.8 + index * 0.15}s`,
                 }}
+                className="reveal-score-row"
               >
                 <div style={styles.rankBadge}>
                   <span style={styles.rankText}>
@@ -97,7 +100,7 @@ export function ResultsPage() {
         </div>
 
         {/* Game Stats */}
-        <div style={styles.statsSection}>
+        <div className="reveal-stats" style={styles.statsSection}>
           <div style={styles.statCard}>
             <p style={styles.statValue}>{gameSession.settings.numberOfSongs}</p>
             <p style={styles.statLabel}>Songs Played</p>
