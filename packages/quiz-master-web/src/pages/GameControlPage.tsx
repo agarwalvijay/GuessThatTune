@@ -26,17 +26,6 @@ interface BuzzerEvent {
   isCorrect?: boolean;
 }
 
-interface MultipleChoiceAnswer {
-  id: string;
-  participantId: string;
-  participantName: string;
-  selectedAnswer: string;
-  elapsedSeconds: number;
-  score: number;
-  isCorrect: boolean;
-  answerTime: number;
-}
-
 export function GameControlPage() {
   const navigate = useNavigate();
   const { accessToken, gameSession, setGameSession } = useAppStore();
@@ -51,7 +40,6 @@ export function GameControlPage() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAwarding, setIsAwarding] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [mcAnswers, setMcAnswers] = useState<MultipleChoiceAnswer[]>([]);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
@@ -132,8 +120,6 @@ export function GameControlPage() {
       socketService.off('score_update');
       socketService.off('game_ended');
       socketService.off('game_state_update');
-      socketService.off('multiple_choice_submitted');
-
       if (gameSession) {
         socketService.leaveSession(gameSession.id);
       }
@@ -271,7 +257,6 @@ export function GameControlPage() {
       // Reset UI state for new round immediately
       setShowAnswer(false);
       setBuzzerEvents([]);
-      setMcAnswers([]);
       setCountdown(null);
       if (countdownTimerRef.current) {
         clearInterval(countdownTimerRef.current);
@@ -313,11 +298,6 @@ export function GameControlPage() {
       startCountdown(countdownSeconds);
     });
 
-    socketService.on('multiple_choice_submitted', (data: { answer: MultipleChoiceAnswer; participantId: string }) => {
-      console.log('📝 MC answer received:', data.answer.participantName, data.answer.isCorrect ? '✓' : '✗');
-      setMcAnswers((prev) => [...prev, data.answer]);
-    });
-
     socketService.onRoundEnded((data) => {
       console.log('Round ended:', data);
       setShowAnswer(true);
@@ -353,9 +333,6 @@ export function GameControlPage() {
               ...event,
               position: index + 1,
             })));
-          }
-          if (currentRoundData.multipleChoiceAnswers) {
-            setMcAnswers(currentRoundData.multipleChoiceAnswers);
           }
         }
       }
@@ -529,8 +506,7 @@ export function GameControlPage() {
           // Reset UI state for new round
           setShowAnswer(false);
           setBuzzerEvents([]);
-          setMcAnswers([]);
-          setElapsedSeconds(0);
+              setElapsedSeconds(0);
           setTimeRemaining(result.session.settings.songDuration);
         }
       }
@@ -647,45 +623,58 @@ export function GameControlPage() {
           {/* Left Column */}
           <div style={styles.column}>
             {gameSession?.settings?.gameMode === 'multiple_choice' ? (
-              <>
-                <h2 style={styles.sectionTitle}>Answers</h2>
-                <div style={styles.buzzerListContainer}>
-                  {mcAnswers.length > 0 ? (
-                    mcAnswers.map((answer) => (
-                      <div
-                        key={answer.id}
-                        style={{
-                          ...styles.buzzerCard,
-                          ...(answer.isCorrect ? styles.buzzerCardWinner : styles.buzzerCardIncorrect),
-                        }}
-                      >
-                        <div style={styles.buzzerInfo}>
-                          <p style={styles.buzzerName}>{answer.participantName}</p>
-                          <p style={styles.buzzerTime}>
-                            {answer.selectedAnswer} ({answer.elapsedSeconds.toFixed(1)}s)
-                          </p>
+              (() => {
+                const currentRoundData = gameSession.rounds?.[currentRound.roundIndex];
+                const answers = currentRoundData?.multipleChoiceAnswers || [];
+                return (
+                  <>
+                    <h2 style={styles.sectionTitle}>Answers</h2>
+                    <div style={styles.buzzerListContainer}>
+                      {answers.length > 0 ? (
+                        answers.map((answer) => (
+                          <div
+                            key={answer.id}
+                            style={{
+                              padding: '12px',
+                              marginBottom: '8px',
+                              borderRadius: '8px',
+                              backgroundColor: answer.isCorrect ? '#d4edda' : '#f8d7da',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              border: answer.isCorrect ? '2px solid #28a745' : '2px solid #dc3545',
+                            }}
+                          >
+                            <span style={{ fontWeight: 'bold', flex: 1 }}>{answer.participantName}</span>
+                            <span style={{ fontSize: '14px', flex: 2, textAlign: 'center' }}>
+                              {answer.isCorrect || currentRoundData?.isComplete ? answer.selectedAnswer : '---'}
+                            </span>
+                            <span
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                backgroundColor: answer.isCorrect ? '#28a745' : '#dc3545',
+                                color: 'white',
+                              }}
+                            >
+                              {answer.isCorrect ? '✓ Correct' : '✗ Wrong'}
+                            </span>
+                            <span style={{ fontWeight: 'bold', marginLeft: '8px', minWidth: '50px', textAlign: 'right' }}>
+                              {answer.score > 0 ? '+' : ''}{answer.score}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={styles.emptyState}>
+                          <p style={styles.emptyText}>Waiting for answers...</p>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={answer.isCorrect ? styles.winnerBadge : styles.incorrectBadge}>
-                            {answer.isCorrect ? '✓ Correct' : '✗ Wrong'}
-                          </span>
-                          <span style={{
-                            fontWeight: '700',
-                            color: answer.score > 0 ? '#10b981' : '#ef4444',
-                            fontSize: '14px',
-                          }}>
-                            {answer.score > 0 ? '+' : ''}{answer.score}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div style={styles.emptyState}>
-                      <p style={styles.emptyText}>Waiting for answers...</p>
+                      )}
                     </div>
-                  )}
-                </div>
-              </>
+                  </>
+                );
+              })()
             ) : (
               <>
                 <h2 style={styles.sectionTitle}>Who Buzzed In</h2>
@@ -879,6 +868,42 @@ export function GameControlPage() {
             </div>
           </div>
         )}
+
+        {/* Multiple Choice Options Display */}
+        {gameSession?.settings?.gameMode === 'multiple_choice' && (() => {
+          const currentRoundData = gameSession.rounds?.[currentRound.roundIndex];
+          return currentRoundData && !currentRoundData.isComplete && (
+            <div style={styles.section}>
+              <h3 style={styles.sectionTitle}>Answer Choices</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                {currentRoundData.multipleChoiceOptions?.map((option: string, index: number) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      backgroundColor: '#f0f0f0',
+                      border: '2px solid #ddd',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span style={{
+                      fontWeight: 'bold',
+                      fontSize: '18px',
+                      color: '#667eea',
+                      minWidth: '24px',
+                    }}>
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span style={{ fontSize: '14px', color: '#333' }}>{option}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* QR Code Section */}
         <div style={styles.section}>
