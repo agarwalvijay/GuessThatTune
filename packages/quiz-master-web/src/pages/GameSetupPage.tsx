@@ -275,15 +275,6 @@ export function GameSetupPage() {
           <label style={styles.gameModeLabel}>Game Mode</label>
           <div style={styles.gameModeButtons}>
             <button
-              onClick={() => setCurrentGameMode('buzzer')}
-              style={{
-                ...styles.gameModeButton,
-                ...(currentGameMode === 'buzzer' ? styles.gameModeButtonActive : {}),
-              }}
-            >
-              🔔 Buzzer
-            </button>
-            <button
               onClick={() => setCurrentGameMode('multiple_choice')}
               style={{
                 ...styles.gameModeButton,
@@ -291,6 +282,15 @@ export function GameSetupPage() {
               }}
             >
               📝 Multiple Choice
+            </button>
+            <button
+              onClick={() => setCurrentGameMode('buzzer')}
+              style={{
+                ...styles.gameModeButton,
+                ...(currentGameMode === 'buzzer' ? styles.gameModeButtonActive : {}),
+              }}
+            >
+              🔔 Buzzer
             </button>
           </div>
         </div>

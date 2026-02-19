@@ -114,7 +114,7 @@ export const useAppStore = create<AppState>((set) => ({
   songs: [],
   gameSession: null,
   gameSettings: {
-    gameMode: 'buzzer',
+    gameMode: 'multiple_choice',
     songDuration: 30,
     numberOfSongs: 10,
     negativePointsPercentage: 25,
@@ -136,7 +136,7 @@ export const useAppStore = create<AppState>((set) => ({
     songs: [],
     gameSession: null,
     gameSettings: {
-      gameMode: 'buzzer',
+      gameMode: 'multiple_choice',
       songDuration: 30,
       numberOfSongs: 10,
       negativePointsPercentage: 25,

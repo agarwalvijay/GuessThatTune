@@ -190,18 +190,6 @@ export function PlaylistSelectionPage() {
               </p>
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                 <button
-                  onClick={() => setTempGameMode('buzzer')}
-                  style={{
-                    ...styles.gameModeButton,
-                    ...(tempGameMode === 'buzzer' ? styles.gameModeButtonActive : {}),
-                  }}
-                >
-                  🔔 Buzzer Mode
-                  <div style={styles.gameModeDescription}>
-                    Press buzzer when you know the answer
-                  </div>
-                </button>
-                <button
                   onClick={() => setTempGameMode('multiple_choice')}
                   style={{
                     ...styles.gameModeButton,
@@ -211,6 +199,18 @@ export function PlaylistSelectionPage() {
                   📝 Multiple Choice
                   <div style={styles.gameModeDescription}>
                     Select from 4 options
+                  </div>
+                </button>
+                <button
+                  onClick={() => setTempGameMode('buzzer')}
+                  style={{
+                    ...styles.gameModeButton,
+                    ...(tempGameMode === 'buzzer' ? styles.gameModeButtonActive : {}),
+                  }}
+                >
+                  🔔 Buzzer Mode
+                  <div style={styles.gameModeDescription}>
+                    Press buzzer when you know the answer
                   </div>
                 </button>
               </div>

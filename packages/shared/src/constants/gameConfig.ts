@@ -1,5 +1,5 @@
 export const DEFAULT_GAME_SETTINGS = {
-  gameMode: 'buzzer' as const, // Default to buzzer for backward compatibility
+  gameMode: 'multiple_choice' as const, // Default to multiple choice
   songDuration: 30, // Play up to 30 seconds of each song
   maxScore: 60, // Maximum points per correct answer
   randomStartOffset: true, // Start songs at random positions
