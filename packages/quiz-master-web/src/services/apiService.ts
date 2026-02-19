@@ -33,7 +33,7 @@ class ApiService {
         },
       });
 
-      allPlaylists = allPlaylists.concat(response.data.items);
+      allPlaylists = allPlaylists.concat(response.data.items.filter(Boolean));
 
       // Check if there are more pages
       url = response.data.next;
@@ -46,7 +46,7 @@ class ApiService {
       id: playlist.id,
       name: playlist.name,
       images: playlist.images,
-      tracks: { total: playlist.tracks.total },
+      tracks: { total: playlist.tracks?.total || 0 },
     }));
   }
 
