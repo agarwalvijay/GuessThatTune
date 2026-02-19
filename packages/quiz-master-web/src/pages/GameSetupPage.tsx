@@ -135,22 +135,23 @@ export function GameSetupPage() {
       console.log('  - gameSession.status:', gameSession?.status);
       console.log('  - participants:', gameSession?.participantIds?.length || 0);
 
+      const songsToPlay = shuffledSongs.slice(0, Math.min(numberOfSongs, shuffledSongs.length));
+
       if (gameSession && gameSession.status === 'ended') {
         console.log('🔄 Restarting game with same participants');
         console.log('  - Session ID:', gameSession.id);
         console.log('  - Participants to keep:', gameSession.participantIds);
-        const songsToPlay = shuffledSongs.slice(0, Math.min(numberOfSongs, shuffledSongs.length));
-        session = await apiService.restartGameSession(gameSession.id, songsToPlay);
+        session = await apiService.restartGameSession(gameSession.id, songsToPlay, shuffledSongs);
       } else {
         // Create new game session
         console.log('🆕 Creating new game session');
         console.log('  - Reason:', !gameSession ? 'No existing session' : `Status is '${gameSession.status}' not 'ended'`);
-        const songsToPlay = shuffledSongs.slice(0, Math.min(numberOfSongs, shuffledSongs.length));
         session = await apiService.createGameSession({
           hostName,
           playlistId: selectedPlaylist.id,
           playlistName: selectedPlaylist.name,
           songs: songsToPlay,
+          allSongsForMCOptions: shuffledSongs, // Full pool for MC wrong answers
           settings: {
             gameMode: currentGameMode,
             songDuration,

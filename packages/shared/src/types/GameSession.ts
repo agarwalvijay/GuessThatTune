@@ -29,6 +29,7 @@ export interface GameSession {
   id: string;
   status: GameStatus;
   songs: Song[];
+  allSongsForMCOptions?: Song[]; // Full playlist pool for MC wrong answers (optional for backwards compat)
   currentRoundIndex: number;
   rounds: GameRound[];
   participantIds: string[]; // Array of participant IDs
@@ -44,6 +45,7 @@ export interface GameSession {
 
 export interface CreateGameSessionRequest {
   songs: Song[];
+  allSongsForMCOptions?: Song[]; // Full playlist for MC wrong answer pool
   settings?: Partial<GameSettings>;
 }
 

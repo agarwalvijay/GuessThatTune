@@ -107,6 +107,7 @@ class ApiService {
     playlistId: string;
     playlistName: string;
     songs: Song[];
+    allSongsForMCOptions?: Song[];
     settings: {
       gameMode?: 'buzzer' | 'multiple_choice';
       songDuration: number;
@@ -115,7 +116,7 @@ class ApiService {
     };
   }): Promise<GameSession> {
     // Transform songs to match backend expected format
-    const transformedSongs = data.songs.map(song => ({
+    const transformSong = (song: Song) => ({
       id: song.id,
       spotifyTrackId: song.id,
       spotifyUri: song.spotifyUri,
@@ -131,11 +132,15 @@ class ApiService {
         artist: song.artist || '',
       },
       previewUrl: song.previewUrl,
-    }));
+    });
+
+    const transformedSongs = data.songs.map(transformSong);
+    const transformedAllSongs = data.allSongsForMCOptions?.map(transformSong);
 
     const response = await this.api.post('/api/game/create', {
       ...data,
       songs: transformedSongs,
+      allSongsForMCOptions: transformedAllSongs,
     });
     return response.data.session;
   }
@@ -221,9 +226,9 @@ class ApiService {
   /**
    * Restart a game session with the same participants
    */
-  async restartGameSession(sessionId: string, songs: Song[]): Promise<GameSession> {
+  async restartGameSession(sessionId: string, songs: Song[], allSongsForMCOptions?: Song[]): Promise<GameSession> {
     // Transform songs to match backend expected format
-    const transformedSongs = songs.map(song => ({
+    const transformSong = (song: Song) => ({
       id: song.id,
       spotifyTrackId: song.id,
       spotifyUri: song.spotifyUri,
@@ -239,10 +244,14 @@ class ApiService {
         artist: song.artist || '',
       },
       previewUrl: song.previewUrl,
-    }));
+    });
+
+    const transformedSongs = songs.map(transformSong);
+    const transformedAllSongs = allSongsForMCOptions?.map(transformSong);
 
     const response = await this.api.post(`/api/game/${sessionId}/restart`, {
       songs: transformedSongs,
+      allSongsForMCOptions: transformedAllSongs,
     });
     return response.data.session;
   }

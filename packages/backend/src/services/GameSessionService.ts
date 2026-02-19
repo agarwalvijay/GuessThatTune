@@ -52,6 +52,7 @@ export class GameSessionService {
       id: sessionId,
       status: 'waiting',
       songs: request.songs,
+      allSongsForMCOptions: request.allSongsForMCOptions, // Store full pool for MC options
       currentRoundIndex: -1, // No round started yet
       rounds: [],
       participantIds: [],
@@ -228,7 +229,9 @@ export class GameSessionService {
 
     // Generate multiple choice options if in MC mode
     if (session.settings.gameMode === 'multiple_choice') {
-      round.multipleChoiceOptions = this.generateMultipleChoiceOptions(song.id, session.songs);
+      // Use full song pool if available, otherwise fall back to session.songs
+      const songPool = session.allSongsForMCOptions || session.songs;
+      round.multipleChoiceOptions = this.generateMultipleChoiceOptions(song.id, songPool);
       round.multipleChoiceAnswers = [];
     }
 
@@ -585,7 +588,7 @@ export class GameSessionService {
   /**
    * Restart game with same session ID and participants
    */
-  restartGame(sessionId: string, songs: Song[]): GameSession | null {
+  restartGame(sessionId: string, songs: Song[], allSongsForMCOptions?: Song[]): GameSession | null {
     const normalizedId = this.normalizeSessionId(sessionId);
     const session = this.sessions.get(normalizedId);
     if (!session) {
@@ -601,6 +604,7 @@ export class GameSessionService {
     // Reset game state while keeping session ID and participants
     session.status = 'waiting';
     session.songs = songs;
+    session.allSongsForMCOptions = allSongsForMCOptions; // Update MC pool
     session.currentRoundIndex = -1;
     session.rounds = [];
     session.scores = resetScores;

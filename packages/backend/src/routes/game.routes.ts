@@ -314,13 +314,13 @@ router.post('/:sessionId/end', (req: Request, res: Response) => {
  */
 router.post('/:sessionId/restart', (req: Request, res: Response) => {
   const { sessionId } = req.params;
-  const { songs } = req.body;
+  const { songs, allSongsForMCOptions } = req.body;
 
   if (!songs || songs.length === 0) {
     return res.status(400).json({ error: 'Songs are required' });
   }
 
-  const session = gameSessionService.restartGame(sessionId, songs);
+  const session = gameSessionService.restartGame(sessionId, songs, allSongsForMCOptions);
 
   if (!session) {
     return res.status(404).json({ error: 'Session not found' });
