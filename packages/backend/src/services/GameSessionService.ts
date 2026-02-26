@@ -118,7 +118,7 @@ export class GameSessionService {
     const participant: Participant = {
       id: participantId,
       name: participantName,
-      sessionId,
+      sessionId: normalizedId,
       score: 0,
       joinedAt: new Date().toISOString(),
       socketId,
@@ -355,6 +355,9 @@ export class GameSessionService {
     const currentRound = session.rounds[session.currentRoundIndex];
     if (!currentRound || !currentRound.songStartTime) return null;
 
+    // Reject submissions after round is already complete
+    if (currentRound.isComplete) return null;
+
     // Check if already answered
     const alreadyAnswered = currentRound.multipleChoiceAnswers?.some(
       a => a.participantId === participantId
@@ -433,6 +436,11 @@ export class GameSessionService {
       return 0;
     }
 
+    // Idempotency: already scored, return existing score
+    if (buzzerEvent.isCorrect !== undefined) {
+      return buzzerEvent.score ?? 0;
+    }
+
     // Calculate score
     const score = calculateScore(buzzerEvent.elapsedSeconds);
     buzzerEvent.score = score;
@@ -467,6 +475,11 @@ export class GameSessionService {
     const buzzerEvent = round.buzzerEvents.find(e => e.participantId === participantId);
     if (!buzzerEvent) {
       return 0;
+    }
+
+    // Idempotency: already scored, return existing score
+    if (buzzerEvent.isCorrect !== undefined) {
+      return buzzerEvent.score ?? 0;
     }
 
     // Calculate what the score would have been if correct

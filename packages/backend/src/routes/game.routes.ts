@@ -95,10 +95,12 @@ router.post('/:sessionId/start', (req: Request, res: Response) => {
   // Broadcast game state update to all participants
   if (io && session) {
     console.log('🎮 Broadcasting game start to session:', sessionId);
+    // Reset songStartTime to the moment of broadcast so timer reflects actual audio start
+    round.songStartTime = Date.now();
     io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
     io.to(sessionId).emit(SERVER_EVENTS.SONG_STARTED, {
       roundId: round.id,
-      songStartTime: round.songStartTime || Date.now(),
+      songStartTime: round.songStartTime,
       duration: session.settings.songDuration,
     });
   }
@@ -132,14 +134,8 @@ router.post('/:sessionId/next', (req: Request, res: Response) => {
 
     // Broadcast game ended
     if (io && session) {
-      const finalScores = Object.entries(session.scores).map(([participantId, score]) => ({
-        participantId,
-        participantName: participantId, // TODO: Get actual name
-        score,
-      }));
-      const winnerId = finalScores.reduce((prev, current) =>
-        (current.score > prev.score) ? current : prev
-      ).participantId;
+      const finalScores = gameSessionService.getFinalScores(sessionId);
+      const winnerId = finalScores.length > 0 ? finalScores[0].participantId : undefined;
 
       io.to(sessionId).emit(SERVER_EVENTS.GAME_ENDED, { finalScores, winnerId });
       io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
@@ -156,9 +152,11 @@ router.post('/:sessionId/next', (req: Request, res: Response) => {
 
   // Broadcast new round started
   if (io && session) {
+    // Reset songStartTime to the moment of broadcast so timer reflects actual audio start
+    nextRound.songStartTime = Date.now();
     io.to(sessionId).emit(SERVER_EVENTS.SONG_STARTED, {
       roundId: nextRound.id,
-      songStartTime: nextRound.songStartTime || Date.now(),
+      songStartTime: nextRound.songStartTime,
       duration: session.settings.songDuration,
     });
     io.to(sessionId).emit(SERVER_EVENTS.GAME_STATE_UPDATE, { session });
@@ -193,10 +191,11 @@ router.post('/:sessionId/score', (req: Request, res: Response) => {
 
     if (round) {
       const song = session.songs.find(s => s.id === round.songId);
+      const winner = gameSessionService.getParticipant(participantId);
       io.to(sessionId).emit(SERVER_EVENTS.ROUND_ENDED, {
         roundId,
         winnerId: participantId,
-        winnerName: session.scores[participantId] !== undefined ? participantId : undefined,
+        winnerName: winner?.name,
         correctAnswer: {
           title: song?.answer.title || 'Unknown',
           artist: song?.answer.artist || 'Unknown',
@@ -355,6 +354,7 @@ router.delete('/:sessionId', (req: Request, res: Response) => {
 
   const finalScores = gameSessionService.getFinalScores(sessionId);
   gameSessionService.endGame(sessionId);
+  gameSessionService.deleteSession(sessionId);
 
   return res.json({
     success: true,

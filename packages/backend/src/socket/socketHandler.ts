@@ -102,6 +102,12 @@ export function setupSocketHandlers(
           return;
         }
 
+        // Verify participant belongs to the claimed session
+        if (participant.sessionId.toUpperCase() !== sessionId.toUpperCase()) {
+          callback({ success: false, error: 'Participant does not belong to this session' });
+          return;
+        }
+
         // Re-associate with new socket
         participant.socketId = socket.id;
         participant.isConnected = true;
@@ -157,18 +163,13 @@ export function setupSocketHandlers(
     /**
      * Handle buzzer press
      */
-    socket.on('buzzer_pressed', ({ sessionId }, callback) => {
+    socket.on('buzzer_pressed', (_payload, callback) => {
       try {
         const participantId = socket.data.participantId;
+        const sessionId = socket.data.sessionId;
 
-        if (!participantId) {
+        if (!participantId || !sessionId) {
           callback({ success: false, error: 'Not joined to any session' });
-          return;
-        }
-
-        // Validate session
-        if (!isValidSessionId(sessionId)) {
-          callback({ success: false, error: 'Invalid session ID' });
           return;
         }
 
@@ -202,11 +203,12 @@ export function setupSocketHandlers(
     /**
      * Handle multiple choice answer submission
      */
-    socket.on('multiple_choice_answer', ({ sessionId, selectedAnswer }, callback) => {
+    socket.on('multiple_choice_answer', ({ selectedAnswer }, callback) => {
       try {
         const participantId = socket.data.participantId;
+        const sessionId = socket.data.sessionId;
 
-        if (!participantId) {
+        if (!participantId || !sessionId) {
           callback({ success: false, error: 'Not joined to any session' });
           return;
         }
