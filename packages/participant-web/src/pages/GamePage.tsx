@@ -23,6 +23,7 @@ export function GamePage() {
   const reactions = useParticipantStore((state) => state.reactions);
   const answeredRoundIdRef = useRef<string | null>(null);
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
 
   // Keep screen awake during active gameplay
   useWakeLock(true);
@@ -51,6 +52,7 @@ export function GamePage() {
       setHasAnswered(false);
       answeredRoundIdRef.current = null;
       setIsSubmittingAnswer(false);
+      setSelectedRoundId(null);
     }
   }, [currentRound?.id, setSelectedAnswer, setHasAnswered]);
 
@@ -79,6 +81,7 @@ export function GamePage() {
     if (hasAnswered && answeredRoundIdRef.current === currentRound.id) return;
 
     answeredRoundIdRef.current = currentRound.id;
+    setSelectedRoundId(currentRound.id);
     setIsSubmittingAnswer(true);
     setHasAnswered(true);
 
@@ -95,12 +98,14 @@ export function GamePage() {
         setSelectedAnswer(null);
         setHasAnswered(false);
         answeredRoundIdRef.current = null;
+        setSelectedRoundId(null);
       }
     } catch (err) {
       console.error('Failed to submit answer:', err);
       setSelectedAnswer(null);
       setHasAnswered(false);
       answeredRoundIdRef.current = null;
+      setSelectedRoundId(null);
     } finally {
       setIsSubmittingAnswer(false);
     }
@@ -206,7 +211,7 @@ export function GamePage() {
                   {multipleChoiceOptions.map((option, index) => (
                     <button
                       key={index}
-                      className={`mc-option ${selectedAnswer === option ? 'selected' : ''} ${answeredThisRound || isSubmittingAnswer ? 'disabled' : ''}`}
+                      className={`mc-option ${selectedRoundId === currentRound?.id && selectedAnswer === option ? 'selected' : ''} ${answeredThisRound || isSubmittingAnswer ? 'disabled' : ''}`}
                       onClick={() => handleSelectAnswer(option)}
                       disabled={answeredThisRound || isSubmittingAnswer}
                     >
