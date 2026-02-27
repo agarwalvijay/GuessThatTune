@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParticipantStore } from '../store/participantStore';
 import { socketService } from '../services/socketService';
@@ -21,7 +21,8 @@ export function GamePage() {
   const setSelectedAnswer = useParticipantStore((state) => state.setSelectedAnswer);
   const setHasAnswered = useParticipantStore((state) => state.setHasAnswered);
   const reactions = useParticipantStore((state) => state.reactions);
-  const answerLockedRef = useRef(false);
+  const answeredRoundIdRef = useRef<string | null>(null);
+  const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
 
   // Keep screen awake during active gameplay
   useWakeLock(true);
@@ -48,7 +49,8 @@ export function GamePage() {
     if (currentRound?.id) {
       setSelectedAnswer(null);
       setHasAnswered(false);
-      answerLockedRef.current = false;
+      answeredRoundIdRef.current = null;
+      setIsSubmittingAnswer(false);
     }
   }, [currentRound?.id, setSelectedAnswer, setHasAnswered]);
 
@@ -72,9 +74,12 @@ export function GamePage() {
   };
 
   const handleSelectAnswer = async (answer: string) => {
-    if (hasAnswered || answerLockedRef.current || !sessionId || !currentRound) return;
+    if (!sessionId || !currentRound) return;
+    if (isSubmittingAnswer) return;
+    if (hasAnswered && answeredRoundIdRef.current === currentRound.id) return;
 
-    answerLockedRef.current = true;
+    answeredRoundIdRef.current = currentRound.id;
+    setIsSubmittingAnswer(true);
     setHasAnswered(true);
 
     setSelectedAnswer(answer);
@@ -89,13 +94,15 @@ export function GamePage() {
       if (!result.success) {
         setSelectedAnswer(null);
         setHasAnswered(false);
-        answerLockedRef.current = false;
+        answeredRoundIdRef.current = null;
       }
     } catch (err) {
       console.error('Failed to submit answer:', err);
       setSelectedAnswer(null);
       setHasAnswered(false);
-      answerLockedRef.current = false;
+      answeredRoundIdRef.current = null;
+    } finally {
+      setIsSubmittingAnswer(false);
     }
   };
 
@@ -103,6 +110,7 @@ export function GamePage() {
   const totalSongs = gameSession?.songs?.length || 0;
   const roundWinner = currentRound?.winnerId;
   const isWinner = roundWinner && roundWinner === participantId;
+  const answeredThisRound = !!currentRound?.id && hasAnswered && answeredRoundIdRef.current === currentRound.id;
   const reactionOptions = ['🔥', '👏', '😂', '🎉', '🤯', '❤️'];
   const recentReactions = reactions.slice(-5).reverse();
 
@@ -198,9 +206,9 @@ export function GamePage() {
                   {multipleChoiceOptions.map((option, index) => (
                     <button
                       key={index}
-                      className={`mc-option ${selectedAnswer === option ? 'selected' : ''} ${hasAnswered ? 'disabled' : ''}`}
+                      className={`mc-option ${selectedAnswer === option ? 'selected' : ''} ${answeredThisRound || isSubmittingAnswer ? 'disabled' : ''}`}
                       onClick={() => handleSelectAnswer(option)}
-                      disabled={hasAnswered || answerLockedRef.current}
+                      disabled={answeredThisRound || isSubmittingAnswer}
                     >
                       <span className="option-letter">{String.fromCharCode(65 + index)}</span>
                       <span className="option-text">{option}</span>
@@ -208,7 +216,7 @@ export function GamePage() {
                   ))}
                 </div>
                 <p className="mc-hint">
-                  {hasAnswered ? 'Answer submitted! Waiting for round to end...' : 'Select the correct song title'}
+                  {answeredThisRound ? 'Answer submitted! Waiting for round to end...' : 'Select the correct song title'}
                 </p>
               </>
             ) : (

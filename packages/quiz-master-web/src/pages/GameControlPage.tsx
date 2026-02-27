@@ -1013,6 +1013,27 @@ export function GameControlPage() {
           );
         })()}
 
+        {/* QR Code Section */}
+        <div style={styles.section}>
+          <button
+            style={styles.qrToggle}
+            onClick={() => setShowQRCode(!showQRCode)}
+          >
+            {showQRCode ? '▼' : '▶'} Players Can Join Here
+          </button>
+          {showQRCode && (
+            <div style={styles.qrCodeContainer}>
+              <QRCodeSVG
+                value={`${config.webAppUrl}/join/${gameSession.id}`}
+                size={180}
+              />
+              <p style={styles.joinUrl}>
+                {config.webAppUrl}/join/{gameSession.id}
+              </p>
+            </div>
+          )}
+        </div>
+
         <div style={styles.soundControlCard}>
           <p style={styles.soundControlLabel}>
             Host Sound Intensity: {soundIntensityLevel.toUpperCase()}
@@ -1034,27 +1055,6 @@ export function GameControlPage() {
             <span>Med</span>
             <span>High</span>
           </div>
-        </div>
-
-        {/* QR Code Section */}
-        <div style={styles.section}>
-          <button
-            style={styles.qrToggle}
-            onClick={() => setShowQRCode(!showQRCode)}
-          >
-            {showQRCode ? '▼' : '▶'} Players Can Join Here
-          </button>
-          {showQRCode && (
-            <div style={styles.qrCodeContainer}>
-              <QRCodeSVG
-                value={`${config.webAppUrl}/join/${gameSession.id}`}
-                size={180}
-              />
-              <p style={styles.joinUrl}>
-                {config.webAppUrl}/join/{gameSession.id}
-              </p>
-            </div>
-          )}
         </div>
       </div>
 

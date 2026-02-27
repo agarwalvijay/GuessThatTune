@@ -137,21 +137,28 @@ export async function playIncorrectGuessSound() {
       await ctx.resume();
     }
 
-    const osc = ctx.createOscillator();
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain);
+    osc1.connect(gain);
+    osc2.connect(gain);
     gain.connect(ctx.destination);
 
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(340, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.18);
+    osc1.type = 'sine';
+    osc2.type = 'triangle';
+    osc1.frequency.setValueAtTime(300, ctx.currentTime);
+    osc1.frequency.linearRampToValueAtTime(240, ctx.currentTime + 0.16);
+    osc2.frequency.setValueAtTime(220, ctx.currentTime + 0.03);
+    osc2.frequency.linearRampToValueAtTime(180, ctx.currentTime + 0.18);
 
     gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.11, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.09, ctx.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
 
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.2);
+    osc1.start(ctx.currentTime);
+    osc2.start(ctx.currentTime + 0.03);
+    osc1.stop(ctx.currentTime + 0.22);
+    osc2.stop(ctx.currentTime + 0.22);
   } catch (error) {
     console.error('Failed to play incorrect guess sound:', error);
   }

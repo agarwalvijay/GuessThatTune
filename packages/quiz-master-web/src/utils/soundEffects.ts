@@ -95,26 +95,34 @@ export async function playIncorrectSound() {
     }
 
     const oscillator = ctx.createOscillator();
+    const oscillator2 = ctx.createOscillator();
     const gainNode = ctx.createGain();
 
     oscillator.connect(gainNode);
+    oscillator2.connect(gainNode);
     gainNode.connect(ctx.destination);
 
-    // Descending "sad trombone" effect (longer)
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(300, ctx.currentTime); // Start
-    oscillator.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.6); // Descend slower
+    // Softer "miss" cue: short descending dual tone
+    oscillator.type = 'sine';
+    oscillator2.type = 'triangle';
+    oscillator.frequency.setValueAtTime(330, ctx.currentTime);
+    oscillator.frequency.linearRampToValueAtTime(240, ctx.currentTime + 0.32);
+    oscillator2.frequency.setValueAtTime(250, ctx.currentTime + 0.03);
+    oscillator2.frequency.linearRampToValueAtTime(170, ctx.currentTime + 0.34);
 
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(scaledGain(0.3), ctx.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+    gainNode.gain.linearRampToValueAtTime(scaledGain(0.2), ctx.currentTime + 0.015);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.36);
 
     oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.6);
+    oscillator2.start(ctx.currentTime + 0.03);
+    oscillator.stop(ctx.currentTime + 0.36);
+    oscillator2.stop(ctx.currentTime + 0.36);
 
     oscillator.onended = () => {
       gainNode.disconnect();
       oscillator.disconnect();
+      oscillator2.disconnect();
     };
   } catch (error) {
     console.error('Failed to play incorrect sound:', error);
