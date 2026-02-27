@@ -2,6 +2,16 @@ import { create } from 'zustand';
 import type { GameSession, GameRound } from '@song-quiz/shared';
 
 interface ParticipantState {
+  reactions: Array<{
+    id: string;
+    participantId: string;
+    participantName: string;
+    emoji: string;
+    createdAt: number;
+  }>;
+  addReaction: (reaction: { id: string; participantId: string; participantName: string; emoji: string; createdAt: number }) => void;
+  clearReactions: () => void;
+
   // Participant info
   participantId: string | null;
   participantName: string;
@@ -50,6 +60,7 @@ interface ParticipantState {
 
 export const useParticipantStore = create<ParticipantState>((set) => ({
   // Initial state
+  reactions: [],
   participantId: null,
   participantName: '',
   sessionId: null,
@@ -63,6 +74,12 @@ export const useParticipantStore = create<ParticipantState>((set) => ({
   myScore: 0,
   isConnected: false,
   error: null,
+
+  addReaction: (reaction) =>
+    set((state) => ({
+      reactions: [...state.reactions.slice(-19), reaction],
+    })),
+  clearReactions: () => set({ reactions: [] }),
 
   // Actions
   setParticipantName: (name) => set({ participantName: name }),
@@ -81,6 +98,7 @@ export const useParticipantStore = create<ParticipantState>((set) => ({
 
   reset: () =>
     set({
+      reactions: [],
       participantId: null,
       participantName: '',
       sessionId: null,

@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents } from '@song-quiz/shared';
 import { SERVER_EVENTS } from '@song-quiz/shared';
 import { useParticipantStore } from '../store/participantStore';
+import { playRoundStartCueSound } from '../utils/soundEffects';
 
 const BACKEND_URL = window.location.origin;
 
@@ -110,6 +111,8 @@ class SocketService {
       store.setBuzzed(false);
       store.setHasAnswered(false);
       store.setSelectedAnswer(null);
+      store.clearReactions();
+      playRoundStartCueSound();
     });
 
     this.socket.on(SERVER_EVENTS.ROUND_ENDED, ({ roundId, winnerName, correctAnswer }) => {
@@ -134,6 +137,11 @@ class SocketService {
     this.socket.on(SERVER_EVENTS.GAME_ENDED, ({ finalScores, winnerId }) => {
       console.log('🎉 Game ended! Winner:', winnerId);
       console.log('Final scores:', finalScores);
+    });
+
+    this.socket.on(SERVER_EVENTS.REACTION_EVENT, (reaction) => {
+      const store = useParticipantStore.getState();
+      store.addReaction(reaction);
     });
 
     this.socket.on(SERVER_EVENTS.ERROR, ({ message }) => {
@@ -213,6 +221,23 @@ class SocketService {
           resolve({ success: true });
         } else {
           console.error('❌ Answer failed:', response.error);
+          resolve({ success: false, error: response.error });
+        }
+      });
+    });
+  }
+
+  async sendReaction(emoji: string): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      if (!this.socket) {
+        resolve({ success: false, error: 'Socket not initialized' });
+        return;
+      }
+
+      this.socket.emit('send_reaction', { emoji }, (response) => {
+        if (response.success) {
+          resolve({ success: true });
+        } else {
           resolve({ success: false, error: response.error });
         }
       });

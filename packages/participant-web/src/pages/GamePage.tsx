@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useParticipantStore } from '../store/participantStore';
 import { socketService } from '../services/socketService';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { playBuzzSound } from '../utils/soundEffects';
+import { playBuzzSound, playReactionTapSound } from '../utils/soundEffects';
 import './GamePage.css';
 
 export function GamePage() {
@@ -19,6 +19,7 @@ export function GamePage() {
   const selectedAnswer = useParticipantStore((state) => state.selectedAnswer);
   const hasAnswered = useParticipantStore((state) => state.hasAnswered);
   const setSelectedAnswer = useParticipantStore((state) => state.setSelectedAnswer);
+  const reactions = useParticipantStore((state) => state.reactions);
 
   // Keep screen awake during active gameplay
   useWakeLock(true);
@@ -88,6 +89,14 @@ export function GamePage() {
   const totalSongs = gameSession?.songs?.length || 0;
   const roundWinner = currentRound?.winnerId;
   const isWinner = roundWinner && roundWinner === participantId;
+  const reactionOptions = ['🔥', '👏', '😂', '🎉', '🤯', '❤️'];
+  const recentReactions = reactions.slice(-5).reverse();
+
+  const handleReaction = async (emoji: string) => {
+    if (gameSession?.status !== 'playing') return;
+    playReactionTapSound();
+    await socketService.sendReaction(emoji);
+  };
 
   return (
     <div className="game-page">
@@ -105,6 +114,33 @@ export function GamePage() {
             <p className="round-number">
               Song {currentSongNumber} of {totalSongs}
             </p>
+          </div>
+        </div>
+
+        <div className="party-bar">
+          <div className="reaction-buttons">
+            {reactionOptions.map((emoji) => (
+              <button
+                key={emoji}
+                className="reaction-button"
+                onClick={() => handleReaction(emoji)}
+                type="button"
+                disabled={gameSession?.status !== 'playing'}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+          <div className="reaction-feed">
+            {recentReactions.length === 0 ? (
+              <p className="reaction-empty">Tap an emoji to hype the round</p>
+            ) : (
+              recentReactions.map((reaction) => (
+                <p className="reaction-item" key={reaction.id}>
+                  <span className="reaction-item-emoji">{reaction.emoji}</span> {reaction.participantName}
+                </p>
+              ))
+            )}
           </div>
         </div>
 

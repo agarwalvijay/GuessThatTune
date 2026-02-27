@@ -7,7 +7,16 @@ import { socketService } from '../services/socketService';
 import { spotifyPlaybackService } from '../services/spotifyPlaybackService';
 import { config } from '../config/environment';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { playBuzzSound, playCorrectSound, playIncorrectSound, playBeepSound } from '../utils/soundEffects';
+import {
+  playBuzzSound,
+  playCorrectSound,
+  playIncorrectSound,
+  playBeepSound,
+  playReactionPopSound,
+  playRoundStartSound,
+  setSoundIntensity,
+  type SoundIntensity,
+} from '../utils/soundEffects';
 import { analyticsService } from '../services/analyticsService';
 import type { Song } from '../store/appStore';
 
@@ -26,6 +35,24 @@ interface BuzzerEvent {
   isCorrect?: boolean;
 }
 
+interface ReactionEvent {
+  id: string;
+  participantId: string;
+  participantName: string;
+  emoji: string;
+  createdAt: number;
+}
+
+interface ReactionSplatter {
+  id: string;
+  emoji: string;
+  left: number;
+  top: number;
+  rotate: number;
+  scale: number;
+  durationMs: number;
+}
+
 export function GameControlPage() {
   const navigate = useNavigate();
   const { accessToken, gameSession, setGameSession } = useAppStore();
@@ -40,6 +67,9 @@ export function GameControlPage() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAwarding, setIsAwarding] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [reactionFeed, setReactionFeed] = useState<ReactionEvent[]>([]);
+  const [reactionSplatters, setReactionSplatters] = useState<ReactionSplatter[]>([]);
+  const [soundIntensityLevel, setSoundIntensityLevel] = useState<SoundIntensity>('medium');
 
   const [waitingForDevice, setWaitingForDevice] = useState(false);
 
@@ -57,6 +87,10 @@ export function GameControlPage() {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    setSoundIntensity(soundIntensityLevel);
+  }, [soundIntensityLevel]);
 
   useEffect(() => {
     console.log('GameControlPage mounted', { accessToken: !!accessToken, gameSession });
@@ -124,6 +158,7 @@ export function GameControlPage() {
       socketService.off('score_update');
       socketService.off('game_ended');
       socketService.off('game_state_update');
+      socketService.off('reaction_event');
       if (gameSession) {
         socketService.leaveSession(gameSession.id);
       }
@@ -289,6 +324,7 @@ export function GameControlPage() {
       // Reset UI state for new round immediately
       setShowAnswer(false);
       setBuzzerEvents([]);
+      setReactionFeed([]);
       setCountdown(null);
       if (countdownTimerRef.current) {
         clearInterval(countdownTimerRef.current);
@@ -297,6 +333,7 @@ export function GameControlPage() {
       setElapsedSeconds(0);
       setIsPlaying(true);
       setTimeRemaining(data.duration);
+      playRoundStartSound();
     });
 
     socketService.on('buzzer_event', (data: { buzzerEvent: BuzzerEvent; position: number }) => {
@@ -368,6 +405,26 @@ export function GameControlPage() {
           }
         }
       }
+    });
+
+    socketService.on('reaction_event', (reaction: ReactionEvent) => {
+      playReactionPopSound();
+      setReactionFeed((prev) => [...prev.slice(-19), reaction]);
+
+      const splatter: ReactionSplatter = {
+        id: reaction.id,
+        emoji: reaction.emoji,
+        left: 8 + Math.random() * 84,
+        top: 12 + Math.random() * 68,
+        rotate: -30 + Math.random() * 60,
+        scale: 0.8 + Math.random() * 0.9,
+        durationMs: 1400 + Math.floor(Math.random() * 900),
+      };
+
+      setReactionSplatters((prev) => [...prev.slice(-24), splatter]);
+      window.setTimeout(() => {
+        setReactionSplatters((prev) => prev.filter((item) => item.id !== splatter.id));
+      }, splatter.durationMs);
     });
   };
 
@@ -615,6 +672,7 @@ export function GameControlPage() {
   const duration = gameSession.settings.songDuration;
   const progress = Math.min(elapsedSeconds / duration, 1);
   const winnerId = gameSession.rounds?.[currentRound.roundIndex]?.winnerId;
+  const soundSliderValue = soundIntensityLevel === 'low' ? 1 : soundIntensityLevel === 'medium' ? 2 : 3;
 
   return (
     <>
@@ -633,6 +691,21 @@ export function GameControlPage() {
             opacity: 1;
           }
         }
+
+        @keyframes emojiSplatter {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
+          }
+          20% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.2) rotate(var(--rot));
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -62%) scale(0.95) rotate(calc(var(--rot) + 10deg));
+          }
+        }
       `}</style>
       <div style={styles.container}>
       <div style={styles.content}>
@@ -644,6 +717,66 @@ export function GameControlPage() {
         {/* Game Mode Indicator */}
         <div style={styles.gameModeIndicator}>
           Mode: {gameSession?.settings?.gameMode === 'multiple_choice' ? '📝 Multiple Choice' : '🔔 Buzzer'}
+        </div>
+
+        <div style={styles.soundControlCard}>
+          <p style={styles.soundControlLabel}>
+            Host Sound Intensity: {soundIntensityLevel.toUpperCase()}
+          </p>
+          <input
+            type="range"
+            min={1}
+            max={3}
+            step={1}
+            value={soundSliderValue}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setSoundIntensityLevel(val === 1 ? 'low' : val === 2 ? 'medium' : 'high');
+            }}
+            style={styles.soundControlSlider}
+          />
+          <div style={styles.soundControlScale}>
+            <span>Low</span>
+            <span>Med</span>
+            <span>High</span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            border: '2px solid rgba(255, 255, 255, 0.1)',
+            padding: '10px 12px',
+            marginBottom: '14px',
+          }}
+        >
+          <p style={{ margin: 0, color: '#a7a7a7', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Crowd Reactions
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px', minHeight: '26px' }}>
+            {reactionFeed.length === 0 ? (
+              <span style={{ color: '#7a7a7a', fontSize: '14px' }}>No reactions yet</span>
+            ) : (
+              reactionFeed.slice(-10).reverse().map((reaction) => (
+                <span
+                  key={reaction.id}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    backgroundColor: 'rgba(29, 185, 84, 0.15)',
+                    border: '1px solid rgba(29, 185, 84, 0.4)',
+                    padding: '4px 8px',
+                    color: '#fff',
+                    fontSize: '13px',
+                  }}
+                >
+                  <span>{reaction.emoji}</span>
+                  <span>{reaction.participantName}</span>
+                </span>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Two Column Layout: Buzzer Events/MC Answers & Scores */}
@@ -966,6 +1099,24 @@ export function GameControlPage() {
         </div>
       )}
 
+      <div style={styles.reactionSplatterLayer}>
+        {reactionSplatters.map((splatter) => (
+          <div
+            key={splatter.id}
+            style={{
+              ...styles.reactionSplatter,
+              left: `${splatter.left}%`,
+              top: `${splatter.top}%`,
+              transform: `translate(-50%, -50%) scale(${splatter.scale})`,
+              animationDuration: `${splatter.durationMs}ms`,
+              ['--rot' as any]: `${splatter.rotate}deg`,
+            }}
+          >
+            {splatter.emoji}
+          </div>
+        ))}
+      </div>
+
       {/* No Spotify Device Overlay */}
       {waitingForDevice && (
         <div style={styles.deviceOverlay}>
@@ -992,6 +1143,7 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: '100vh',
     backgroundColor: '#0a0a0a',
     padding: '20px',
+    position: 'relative',
   },
   content: {
     maxWidth: '800px',
@@ -1373,6 +1525,22 @@ const styles: Record<string, React.CSSProperties> = {
     animation: 'countdownZoom 1s ease-out',
     userSelect: 'none' as const,
   },
+  reactionSplatterLayer: {
+    position: 'fixed' as const,
+    inset: 0,
+    pointerEvents: 'none' as const,
+    zIndex: 9000,
+  },
+  reactionSplatter: {
+    position: 'absolute' as const,
+    fontSize: '42px',
+    lineHeight: 1,
+    filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.55))',
+    animationName: 'emojiSplatter',
+    animationTimingFunction: 'ease-out',
+    animationFillMode: 'forwards' as const,
+    userSelect: 'none' as const,
+  },
   gameModeIndicator: {
     fontSize: '14px',
     color: '#a7a7a7',
@@ -1380,6 +1548,32 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: '500',
     textTransform: 'uppercase' as const,
     letterSpacing: '1px',
+  },
+  soundControlCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    border: '2px solid rgba(255, 255, 255, 0.1)',
+    padding: '10px 12px',
+    marginBottom: '10px',
+  },
+  soundControlLabel: {
+    margin: '0 0 8px 0',
+    color: '#a7a7a7',
+    fontSize: '12px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1px',
+  },
+  soundControlSlider: {
+    width: '100%',
+    accentColor: '#1DB954',
+    cursor: 'pointer',
+  },
+  soundControlScale: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    color: '#7f7f7f',
+    fontSize: '11px',
+    marginTop: '2px',
+    textTransform: 'uppercase' as const,
   },
   deviceOverlay: {
     position: 'fixed' as const,

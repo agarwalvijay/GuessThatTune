@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import { randomUUID } from 'crypto';
 import { gameSessionService } from '../services/GameSessionService';
 import {
   ClientToServerEvents,
@@ -14,6 +15,9 @@ import {
 export function setupSocketHandlers(
   io: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
 ) {
+  const reactionRateLimits: Map<string, number> = new Map();
+  const allowedReactions = new Set(['🔥', '👏', '😂', '🎉', '🤯', '❤️']);
+
   io.on('connection', (socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>) => {
     console.log(`${new Date().toISOString()} Client connected: ${socket.id} transport: ${socket.conn.transport.name}`);
 
@@ -264,6 +268,54 @@ export function setupSocketHandlers(
         console.log(`MC answer from ${answer.participantName}: ${selectedAnswer} (${answer.isCorrect ? '✓' : '✗'})`);
       } catch (error) {
         console.error('Error in multiple_choice_answer:', error);
+        callback({ success: false, error: 'Server error' });
+      }
+    });
+
+    /**
+     * Handle party reaction from participant
+     */
+    socket.on('send_reaction', ({ emoji }, callback) => {
+      try {
+        const participantId = socket.data.participantId;
+        const sessionId = socket.data.sessionId;
+
+        if (!participantId || !sessionId) {
+          callback({ success: false, error: 'Not joined to any session' });
+          return;
+        }
+
+        if (!allowedReactions.has(emoji)) {
+          callback({ success: false, error: 'Unsupported reaction' });
+          return;
+        }
+
+        const participant = gameSessionService.getParticipant(participantId);
+        if (!participant) {
+          callback({ success: false, error: 'Participant not found' });
+          return;
+        }
+
+        // Light rate limit: max 1 reaction every 700ms per participant
+        const now = Date.now();
+        const lastReactionTime = reactionRateLimits.get(participantId) || 0;
+        if (now - lastReactionTime < 700) {
+          callback({ success: false, error: 'Too many reactions' });
+          return;
+        }
+        reactionRateLimits.set(participantId, now);
+
+        io.to(sessionId).emit(SERVER_EVENTS.REACTION_EVENT, {
+          id: randomUUID(),
+          participantId,
+          participantName: participant.name,
+          emoji,
+          createdAt: now,
+        });
+
+        callback({ success: true });
+      } catch (error) {
+        console.error('Error in send_reaction:', error);
         callback({ success: false, error: 'Server error' });
       }
     });

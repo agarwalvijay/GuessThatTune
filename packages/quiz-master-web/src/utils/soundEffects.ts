@@ -1,5 +1,21 @@
 // Create a shared AudioContext to reuse across calls (better for mobile)
 let audioContext: AudioContext | null = null;
+export type SoundIntensity = 'low' | 'medium' | 'high';
+let soundIntensity: SoundIntensity = 'medium';
+
+const intensityMultiplier: Record<SoundIntensity, number> = {
+  low: 0.45,
+  medium: 0.75,
+  high: 1,
+};
+
+function scaledGain(value: number): number {
+  return Math.max(0.0001, Math.min(1, value * intensityMultiplier[soundIntensity]));
+}
+
+export function setSoundIntensity(level: SoundIntensity) {
+  soundIntensity = level;
+}
 
 function getAudioContext(): AudioContext {
   if (!audioContext) {
@@ -43,8 +59,8 @@ export async function playCorrectSound() {
 
     // Bright, triumphant envelope
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.01);
-    gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.2);
+    gainNode.gain.linearRampToValueAtTime(scaledGain(0.5), ctx.currentTime + 0.01);
+    gainNode.gain.linearRampToValueAtTime(scaledGain(0.5), ctx.currentTime + 0.2);
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
 
     osc1.start(ctx.currentTime);
@@ -90,7 +106,7 @@ export async function playIncorrectSound() {
     oscillator.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.6); // Descend slower
 
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+    gainNode.gain.linearRampToValueAtTime(scaledGain(0.3), ctx.currentTime + 0.01);
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
 
     oscillator.start(ctx.currentTime);
@@ -141,8 +157,8 @@ export async function playBuzzSound() {
 
     // Configure volume envelope (reduced volume)
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02); // Quieter
-    gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.3); // Sustain
+    gainNode.gain.linearRampToValueAtTime(scaledGain(0.3), ctx.currentTime + 0.02); // Quieter
+    gainNode.gain.linearRampToValueAtTime(scaledGain(0.3), ctx.currentTime + 0.3); // Sustain
     gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); // Quick fade
 
     // Play the sound
@@ -184,7 +200,7 @@ export async function playBeepSound() {
     oscillator.frequency.setValueAtTime(800, ctx.currentTime);
 
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.02);
+    gainNode.gain.linearRampToValueAtTime(scaledGain(0.5), ctx.currentTime + 0.02);
     gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
 
     oscillator.start(ctx.currentTime);
@@ -196,5 +212,81 @@ export async function playBeepSound() {
     };
   } catch (error) {
     console.error('Failed to play beep sound:', error);
+  }
+}
+
+/**
+ * Plays a short percussive pop for audience reactions
+ */
+export async function playReactionPopSound() {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+    const channelData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < channelData.length; i++) {
+      channelData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.02));
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = noiseBuffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1200;
+    filter.Q.value = 2;
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(scaledGain(0.18), ctx.currentTime + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.09);
+
+    source.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    source.start(ctx.currentTime);
+    source.stop(ctx.currentTime + 0.1);
+  } catch (error) {
+    console.error('Failed to play reaction pop sound:', error);
+  }
+}
+
+/**
+ * Plays a short "round begins" stinger
+ */
+export async function playRoundStartSound() {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc1.type = 'triangle';
+    osc2.type = 'sine';
+    osc1.frequency.setValueAtTime(392, ctx.currentTime); // G4
+    osc1.frequency.linearRampToValueAtTime(587, ctx.currentTime + 0.22); // D5
+    osc2.frequency.setValueAtTime(587, ctx.currentTime + 0.05);
+
+    gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(scaledGain(0.22), ctx.currentTime + 0.015);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.32);
+
+    osc1.connect(gainNode);
+    osc2.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc1.start(ctx.currentTime);
+    osc2.start(ctx.currentTime + 0.04);
+    osc1.stop(ctx.currentTime + 0.32);
+    osc2.stop(ctx.currentTime + 0.28);
+  } catch (error) {
+    console.error('Failed to play round start sound:', error);
   }
 }

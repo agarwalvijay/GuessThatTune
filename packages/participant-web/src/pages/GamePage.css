@@ -158,6 +158,61 @@
   color: #a7a7a7;
 }
 
+.party-bar {
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.reaction-buttons {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.reaction-button {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 1.15rem;
+  padding: 6px 0;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+.reaction-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: rgba(29, 185, 84, 0.2);
+}
+
+.reaction-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reaction-feed {
+  min-height: 20px;
+}
+
+.reaction-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #8a8a8a;
+}
+
+.reaction-item {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #d6d6d6;
+  line-height: 1.35;
+}
+
+.reaction-item-emoji {
+  margin-right: 2px;
+}
+
 .game-mode-container {
   flex: 1;
   display: flex;

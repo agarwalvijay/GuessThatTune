@@ -10,6 +10,7 @@ export interface ClientToServerEvents {
   leave_game: (data: { sessionId: string }) => void;
   buzzer_pressed: (data: { sessionId: string }, callback: (response: { success: boolean; buzzerEvent?: BuzzerEvent; error?: string }) => void) => void;
   multiple_choice_answer: (data: { sessionId: string; selectedAnswer: string }, callback: (response: { success: boolean; error?: string; result?: MultipleChoiceAnswer }) => void) => void;
+  send_reaction: (data: { emoji: string }, callback: (response: { success: boolean; error?: string }) => void) => void;
 }
 
 // Server -> Client Events
@@ -24,6 +25,7 @@ export interface ServerToClientEvents {
   round_ended: (data: { roundId: string; winnerId?: string; winnerName?: string; correctAnswer: { title: string; artist: string } }) => void;
   score_update: (data: { scores: Record<string, number> }) => void;
   game_ended: (data: { finalScores: Array<{ participantId: string; participantName: string; score: number }>; winnerId?: string }) => void;
+  reaction_event: (data: { id: string; participantId: string; participantName: string; emoji: string; createdAt: number }) => void;
   error: (data: { message: string }) => void;
 }
 
