@@ -724,29 +724,6 @@ export function GameControlPage() {
           Mode: {gameSession?.settings?.gameMode === 'multiple_choice' ? '📝 Multiple Choice' : '🔔 Buzzer'}
         </div>
 
-        <div style={styles.soundControlCard}>
-          <p style={styles.soundControlLabel}>
-            Host Sound Intensity: {soundIntensityLevel.toUpperCase()}
-          </p>
-          <input
-            type="range"
-            min={1}
-            max={3}
-            step={1}
-            value={soundSliderValue}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              setSoundIntensityLevel(val === 1 ? 'low' : val === 2 ? 'medium' : 'high');
-            }}
-            style={styles.soundControlSlider}
-          />
-          <div style={styles.soundControlScale}>
-            <span>Low</span>
-            <span>Med</span>
-            <span>High</span>
-          </div>
-        </div>
-
         {/* Two Column Layout: Buzzer Events/MC Answers & Scores */}
         <div style={styles.twoColumnContainer}>
           {/* Left Column */}
@@ -1035,6 +1012,29 @@ export function GameControlPage() {
             </div>
           );
         })()}
+
+        <div style={styles.soundControlCard}>
+          <p style={styles.soundControlLabel}>
+            Host Sound Intensity: {soundIntensityLevel.toUpperCase()}
+          </p>
+          <input
+            type="range"
+            min={1}
+            max={3}
+            step={1}
+            value={soundSliderValue}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setSoundIntensityLevel(val === 1 ? 'low' : val === 2 ? 'medium' : 'high');
+            }}
+            style={styles.soundControlSlider}
+          />
+          <div style={styles.soundControlScale}>
+            <span>Low</span>
+            <span>Med</span>
+            <span>High</span>
+          </div>
+        </div>
 
         {/* QR Code Section */}
         <div style={styles.section}>
@@ -1521,8 +1521,8 @@ const styles: Record<string, React.CSSProperties> = {
   soundControlCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     border: '2px solid rgba(255, 255, 255, 0.1)',
-    padding: '10px 12px',
-    marginBottom: '10px',
+    padding: '12px 14px',
+    marginBottom: '16px',
   },
   soundControlLabel: {
     margin: '0 0 8px 0',
@@ -1535,6 +1535,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     accentColor: '#1DB954',
     cursor: 'pointer',
+    minHeight: '32px',
   },
   soundControlScale: {
     display: 'flex',

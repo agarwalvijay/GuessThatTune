@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParticipantStore } from '../store/participantStore';
 import { socketService } from '../services/socketService';
@@ -19,7 +19,9 @@ export function GamePage() {
   const selectedAnswer = useParticipantStore((state) => state.selectedAnswer);
   const hasAnswered = useParticipantStore((state) => state.hasAnswered);
   const setSelectedAnswer = useParticipantStore((state) => state.setSelectedAnswer);
+  const setHasAnswered = useParticipantStore((state) => state.setHasAnswered);
   const reactions = useParticipantStore((state) => state.reactions);
+  const answerLockedRef = useRef(false);
 
   // Keep screen awake during active gameplay
   useWakeLock(true);
@@ -43,10 +45,12 @@ export function GamePage() {
 
   // Clear selected answer when round changes
   useEffect(() => {
-    if (gameSession?.currentRoundIndex !== undefined) {
+    if (currentRound?.id) {
       setSelectedAnswer(null);
+      setHasAnswered(false);
+      answerLockedRef.current = false;
     }
-  }, [gameSession?.currentRoundIndex, setSelectedAnswer]);
+  }, [currentRound?.id, setSelectedAnswer, setHasAnswered]);
 
   const handleBuzz = async () => {
     if (buzzerDisabled || hasBuzzed || !sessionId) return;
@@ -68,7 +72,10 @@ export function GamePage() {
   };
 
   const handleSelectAnswer = async (answer: string) => {
-    if (hasAnswered || !sessionId || !currentRound) return;
+    if (hasAnswered || answerLockedRef.current || !sessionId || !currentRound) return;
+
+    answerLockedRef.current = true;
+    setHasAnswered(true);
 
     setSelectedAnswer(answer);
 
@@ -78,10 +85,17 @@ export function GamePage() {
     }
 
     try {
-      await socketService.submitMultipleChoiceAnswer(sessionId, answer);
+      const result = await socketService.submitMultipleChoiceAnswer(sessionId, answer);
+      if (!result.success) {
+        setSelectedAnswer(null);
+        setHasAnswered(false);
+        answerLockedRef.current = false;
+      }
     } catch (err) {
       console.error('Failed to submit answer:', err);
       setSelectedAnswer(null);
+      setHasAnswered(false);
+      answerLockedRef.current = false;
     }
   };
 
@@ -186,7 +200,7 @@ export function GamePage() {
                       key={index}
                       className={`mc-option ${selectedAnswer === option ? 'selected' : ''} ${hasAnswered ? 'disabled' : ''}`}
                       onClick={() => handleSelectAnswer(option)}
-                      disabled={hasAnswered}
+                      disabled={hasAnswered || answerLockedRef.current}
                     >
                       <span className="option-letter">{String.fromCharCode(65 + index)}</span>
                       <span className="option-text">{option}</span>
