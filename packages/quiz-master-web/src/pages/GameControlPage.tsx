@@ -37,10 +37,7 @@ interface BuzzerEvent {
 
 interface ReactionEvent {
   id: string;
-  participantId: string;
-  participantName: string;
   emoji: string;
-  createdAt: number;
 }
 
 interface ReactionSplatter {
@@ -50,6 +47,7 @@ interface ReactionSplatter {
   top: number;
   rotate: number;
   scale: number;
+  sizeVmin: number;
   durationMs: number;
 }
 
@@ -67,7 +65,6 @@ export function GameControlPage() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [isAwarding, setIsAwarding] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [reactionFeed, setReactionFeed] = useState<ReactionEvent[]>([]);
   const [reactionSplatters, setReactionSplatters] = useState<ReactionSplatter[]>([]);
   const [soundIntensityLevel, setSoundIntensityLevel] = useState<SoundIntensity>('medium');
 
@@ -159,6 +156,7 @@ export function GameControlPage() {
       socketService.off('game_ended');
       socketService.off('game_state_update');
       socketService.off('reaction_event');
+      socketService.off('multiple_choice_submitted');
       if (gameSession) {
         socketService.leaveSession(gameSession.id);
       }
@@ -324,7 +322,6 @@ export function GameControlPage() {
       // Reset UI state for new round immediately
       setShowAnswer(false);
       setBuzzerEvents([]);
-      setReactionFeed([]);
       setCountdown(null);
       if (countdownTimerRef.current) {
         clearInterval(countdownTimerRef.current);
@@ -409,22 +406,30 @@ export function GameControlPage() {
 
     socketService.on('reaction_event', (reaction: ReactionEvent) => {
       playReactionPopSound();
-      setReactionFeed((prev) => [...prev.slice(-19), reaction]);
 
       const splatter: ReactionSplatter = {
         id: reaction.id,
         emoji: reaction.emoji,
-        left: 8 + Math.random() * 84,
-        top: 12 + Math.random() * 68,
-        rotate: -30 + Math.random() * 60,
-        scale: 0.8 + Math.random() * 0.9,
-        durationMs: 1400 + Math.floor(Math.random() * 900),
+        left: 6 + Math.random() * 88,
+        top: 8 + Math.random() * 82,
+        rotate: -35 + Math.random() * 70,
+        scale: 0.95 + Math.random() * 0.6,
+        sizeVmin: 22 + Math.random() * 26,
+        durationMs: 1200 + Math.floor(Math.random() * 700),
       };
 
       setReactionSplatters((prev) => [...prev.slice(-24), splatter]);
       window.setTimeout(() => {
         setReactionSplatters((prev) => prev.filter((item) => item.id !== splatter.id));
       }, splatter.durationMs);
+    });
+
+    socketService.on('multiple_choice_submitted', (data: { answer: { isCorrect: boolean } }) => {
+      if (data.answer.isCorrect) {
+        playCorrectSound();
+      } else {
+        playIncorrectSound();
+      }
     });
   };
 
@@ -739,43 +744,6 @@ export function GameControlPage() {
             <span>Low</span>
             <span>Med</span>
             <span>High</span>
-          </div>
-        </div>
-
-        <div
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-            border: '2px solid rgba(255, 255, 255, 0.1)',
-            padding: '10px 12px',
-            marginBottom: '14px',
-          }}
-        >
-          <p style={{ margin: 0, color: '#a7a7a7', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Crowd Reactions
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px', minHeight: '26px' }}>
-            {reactionFeed.length === 0 ? (
-              <span style={{ color: '#7a7a7a', fontSize: '14px' }}>No reactions yet</span>
-            ) : (
-              reactionFeed.slice(-10).reverse().map((reaction) => (
-                <span
-                  key={reaction.id}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    backgroundColor: 'rgba(29, 185, 84, 0.15)',
-                    border: '1px solid rgba(29, 185, 84, 0.4)',
-                    padding: '4px 8px',
-                    color: '#fff',
-                    fontSize: '13px',
-                  }}
-                >
-                  <span>{reaction.emoji}</span>
-                  <span>{reaction.participantName}</span>
-                </span>
-              ))
-            )}
           </div>
         </div>
 
@@ -1107,6 +1075,7 @@ export function GameControlPage() {
               ...styles.reactionSplatter,
               left: `${splatter.left}%`,
               top: `${splatter.top}%`,
+              fontSize: `${splatter.sizeVmin}vmin`,
               transform: `translate(-50%, -50%) scale(${splatter.scale})`,
               animationDuration: `${splatter.durationMs}ms`,
               ['--rot' as any]: `${splatter.rotate}deg`,
@@ -1533,9 +1502,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   reactionSplatter: {
     position: 'absolute' as const,
-    fontSize: '42px',
     lineHeight: 1,
-    filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.55))',
+    filter: 'drop-shadow(0 8px 22px rgba(0, 0, 0, 0.75))',
+    opacity: 0.96,
     animationName: 'emojiSplatter',
     animationTimingFunction: 'ease-out',
     animationFillMode: 'forwards' as const,

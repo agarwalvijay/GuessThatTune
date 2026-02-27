@@ -2,13 +2,14 @@ import { io, Socket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents } from '@song-quiz/shared';
 import { SERVER_EVENTS } from '@song-quiz/shared';
 import { useParticipantStore } from '../store/participantStore';
-import { playRoundStartCueSound } from '../utils/soundEffects';
+import { playCorrectGuessSound, playIncorrectGuessSound, playRoundStartCueSound } from '../utils/soundEffects';
 
 const BACKEND_URL = window.location.origin;
 
 class SocketService {
   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
   private isInitialized = false;
+  private lastRoundId: string | null = null;
 
   initialize() {
     if (this.isInitialized) {
@@ -73,6 +74,17 @@ class SocketService {
       console.log('  - Status changed:', currentStatus !== session.status);
 
       store.setGameSession(session);
+
+      // Defensive round transition reset: avoids stale selected answer carrying over
+      const activeRound = session.rounds?.[session.currentRoundIndex];
+      const activeRoundId = activeRound?.id || null;
+      if (activeRoundId && activeRoundId !== this.lastRoundId) {
+        store.setBuzzed(false);
+        store.setHasAnswered(false);
+        store.setSelectedAnswer(null);
+        store.clearReactions();
+      }
+      this.lastRoundId = activeRoundId;
 
       // Extract multiple choice options for current round
       if (session.settings.gameMode === 'multiple_choice') {
@@ -218,6 +230,11 @@ class SocketService {
           console.log('✅ Answer submitted!');
           const store = useParticipantStore.getState();
           store.setHasAnswered(true);
+          if (response.result?.isCorrect) {
+            playCorrectGuessSound();
+          } else {
+            playIncorrectGuessSound();
+          }
           resolve({ success: true });
         } else {
           console.error('❌ Answer failed:', response.error);
@@ -257,6 +274,7 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
       this.isInitialized = false;
+      this.lastRoundId = null;
     }
   }
 
