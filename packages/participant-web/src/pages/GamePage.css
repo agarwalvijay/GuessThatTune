@@ -413,10 +413,12 @@
   text-align: left;
 }
 
-.mc-option:hover:not(.disabled) {
-  transform: translate(-4px, -4px);
-  box-shadow: 6px 6px 0px #1DB954;
-  border-color: #1DB954;
+@media (hover: hover) and (pointer: fine) {
+  .mc-option:hover:not(.disabled) {
+    transform: translate(-4px, -4px);
+    box-shadow: 6px 6px 0px #1DB954;
+    border-color: #1DB954;
+  }
 }
 
 .mc-option:active:not(.disabled) {

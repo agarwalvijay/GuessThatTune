@@ -53,6 +53,11 @@ export function GamePage() {
       answeredRoundIdRef.current = null;
       setIsSubmittingAnswer(false);
       setSelectedRoundId(null);
+
+      const activeElement = document.activeElement as HTMLElement | null;
+      if (activeElement && activeElement.classList.contains('mc-option')) {
+        activeElement.blur();
+      }
     }
   }, [currentRound?.id, setSelectedAnswer, setHasAnswered]);
 
@@ -86,6 +91,10 @@ export function GamePage() {
     setHasAnswered(true);
 
     setSelectedAnswer(answer);
+    const activeElement = document.activeElement as HTMLElement | null;
+    if (activeElement && activeElement.classList.contains('mc-option')) {
+      activeElement.blur();
+    }
 
     // Vibrate for haptic feedback (100ms)
     if ('vibrate' in navigator) {
@@ -210,7 +219,7 @@ export function GamePage() {
                 <div className="mc-options-grid">
                   {multipleChoiceOptions.map((option, index) => (
                     <button
-                      key={index}
+                      key={`${currentRound?.id || 'round'}-${index}-${option}`}
                       className={`mc-option ${selectedRoundId === currentRound?.id && selectedAnswer === option ? 'selected' : ''} ${answeredThisRound || isSubmittingAnswer ? 'disabled' : ''}`}
                       onClick={() => handleSelectAnswer(option)}
                       disabled={answeredThisRound || isSubmittingAnswer}
