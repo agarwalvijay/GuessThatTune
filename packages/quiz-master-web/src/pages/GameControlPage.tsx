@@ -221,8 +221,8 @@ export function GameControlPage() {
     if (!accessToken) return;
     const devices = await apiService.getSpotifyDevices(accessToken);
     if (devices.length > 0) {
-      playSong(song);
-      setIsPlaying(true);
+      const started = await playSong(song);
+      setIsPlaying(started);
       return;
     }
     // No device — block and poll
@@ -238,8 +238,8 @@ export function GameControlPage() {
         }
         setWaitingForDevice(false);
         if (pendingSongRef.current) {
-          playSong(pendingSongRef.current);
-          setIsPlaying(true);
+          const started = await playSong(pendingSongRef.current);
+          setIsPlaying(started);
           pendingSongRef.current = null;
         }
       }
@@ -328,7 +328,7 @@ export function GameControlPage() {
         countdownTimerRef.current = null;
       }
       setElapsedSeconds(0);
-      setIsPlaying(true);
+      setIsPlaying(false);
       setTimeRemaining(data.duration);
       playRoundStartSound();
     });
@@ -433,7 +433,7 @@ export function GameControlPage() {
     });
   };
 
-  const playSong = async (song: any) => {
+  const playSong = async (song: any): Promise<boolean> => {
     try {
       // Random start position (avoiding the very end of the song)
       const durationMs = song.durationMs || (song.metadata?.duration * 1000) || 180000;
@@ -446,8 +446,11 @@ export function GameControlPage() {
 
       console.log(`🎵 Playing: ${title} by ${artist}`);
       await spotifyPlaybackService.playSong(uri, startPosition);
+      return true;
     } catch (error: any) {
       console.error('Error playing song:', error);
+      alert('Could not start playback on the selected Spotify device. Please open Spotify and try again.');
+      return false;
     }
   };
 

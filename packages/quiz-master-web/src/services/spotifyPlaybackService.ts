@@ -53,7 +53,7 @@ class SpotifyPlaybackService {
   /**
    * Transfer playback to a specific device
    */
-  private async transferPlayback(deviceId: string): Promise<void> {
+  private async transferPlayback(deviceId: string, play: boolean = false): Promise<void> {
     if (!this.accessToken) {
       throw new Error('No access token available');
     }
@@ -64,7 +64,7 @@ class SpotifyPlaybackService {
         'https://api.spotify.com/v1/me/player',
         {
           device_ids: [deviceId],
-          play: false, // Don't start playing yet
+          play,
         },
         {
           headers: {
@@ -75,8 +75,9 @@ class SpotifyPlaybackService {
       );
       console.log('✅ Playback transferred successfully');
     } catch (error: any) {
-      // Log but don't throw - we'll try to play anyway
-      console.warn('⚠️ Could not transfer playback:', error.response?.data || error.message);
+      // Transfer failures frequently lead to stale/old-song playback, so bubble up
+      console.error('❌ Could not transfer playback:', error.response?.data || error.message);
+      throw error;
     }
   }
 
@@ -160,9 +161,9 @@ class SpotifyPlaybackService {
 
       console.log('🎵 Using device:', targetDevice.name, `(${targetDevice.type})`);
 
-      // Transfer playback to the device first to "wake it up"
-      // This helps prevent mobile devices from becoming stale
-      await this.transferPlayback(targetDevice.id);
+      // Transfer playback to the device first to "wake it up".
+      // Using play:true improves activation on iOS/remote Spotify Connect devices.
+      await this.transferPlayback(targetDevice.id, true);
 
       // Verify the position doesn't exceed track duration
       if (startPositionMs >= trackDurationMs) {
@@ -182,16 +183,32 @@ class SpotifyPlaybackService {
       };
       console.log('📤 Sending to Spotify:', JSON.stringify(playbackPayload, null, 2));
 
-      await axios.put(
-        `https://api.spotify.com/v1/me/player/play?device_id=${targetDevice.id}`,
-        playbackPayload,
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json',
-          },
+      let playResponseError: any = null;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          await axios.put(
+            `https://api.spotify.com/v1/me/player/play?device_id=${targetDevice.id}`,
+            playbackPayload,
+            {
+              headers: {
+                'Authorization': `Bearer ${this.accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          playResponseError = null;
+          break;
+        } catch (error: any) {
+          playResponseError = error;
+          console.warn(`⚠️ Play attempt ${attempt} failed`, error.response?.data || error.message);
+          // Short backoff lets Spotify finish transfer activation
+          await new Promise(resolve => setTimeout(resolve, 250));
         }
-      );
+      }
+
+      if (playResponseError) {
+        throw playResponseError;
+      }
 
       this.selectedDeviceId = targetDevice.id;
       console.log('✅ Playback command sent to', targetDevice.name);
