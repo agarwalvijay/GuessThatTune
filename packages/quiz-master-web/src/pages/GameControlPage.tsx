@@ -53,7 +53,7 @@ interface ReactionSplatter {
 
 export function GameControlPage() {
   const navigate = useNavigate();
-  const { accessToken, gameSession, setGameSession } = useAppStore();
+  const { accessToken, gameSession, setGameSession, setGameSettings } = useAppStore();
 
   const [currentRound, setCurrentRound] = useState<RoundData | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -69,6 +69,10 @@ export function GameControlPage() {
   const [soundIntensityLevel, setSoundIntensityLevel] = useState<SoundIntensity>('medium');
 
   const [waitingForDevice, setWaitingForDevice] = useState(false);
+  const [devicePicker, setDevicePicker] = useState<{
+    devices: Array<{ id: string; name: string; type: string; is_active: boolean }>;
+    missingName: string | null;
+  } | null>(null);
 
   // Use ref to track playing state for event handlers
   const isPlayingRef = useRef(false);
@@ -216,34 +220,68 @@ export function GameControlPage() {
     };
   }, []);
 
-  // Check for a Spotify player then play, or show blocking overlay if none found
+  // Check for a Spotify player then play, or show blocking overlay if none found.
+  // Also guards against a previously-selected device that's gone stale: instead
+  // of silently picking another device, prompts the host to choose.
   const startRoundWhenReady = async (song: any) => {
     if (!accessToken) return;
     const devices = await apiService.getSpotifyDevices(accessToken);
-    if (devices.length > 0) {
-      const started = await playSong(song);
-      setIsPlaying(started);
+
+    if (devices.length === 0) {
+      pendingSongRef.current = song;
+      setWaitingForDevice(true);
+      if (devicePollRef.current) clearInterval(devicePollRef.current);
+      devicePollRef.current = setInterval(async () => {
+        const updatedDevices = await apiService.getSpotifyDevices(accessToken);
+        if (updatedDevices.length > 0) {
+          if (devicePollRef.current) {
+            clearInterval(devicePollRef.current);
+            devicePollRef.current = null;
+          }
+          setWaitingForDevice(false);
+          // Re-enter so the stale-device check below runs on the new list
+          if (pendingSongRef.current) {
+            const next = pendingSongRef.current;
+            pendingSongRef.current = null;
+            startRoundWhenReady(next);
+          }
+        }
+      }, 5000);
       return;
     }
-    // No device — block and poll
-    pendingSongRef.current = song;
-    setWaitingForDevice(true);
-    if (devicePollRef.current) clearInterval(devicePollRef.current);
-    devicePollRef.current = setInterval(async () => {
-      const updatedDevices = await apiService.getSpotifyDevices(accessToken);
-      if (updatedDevices.length > 0) {
-        if (devicePollRef.current) {
-          clearInterval(devicePollRef.current);
-          devicePollRef.current = null;
-        }
-        setWaitingForDevice(false);
-        if (pendingSongRef.current) {
-          const started = await playSong(pendingSongRef.current);
-          setIsPlaying(started);
-          pendingSongRef.current = null;
-        }
+
+    // Stale-device guard: if the host picked a specific device in settings and
+    // that device is no longer in the active/playable list, ask which to use
+    // rather than silently falling back to whatever Spotify returns first.
+    const { gameSettings } = useAppStore.getState();
+    const selectedId = gameSettings.selectedDeviceId;
+    if (selectedId) {
+      const stillThere = devices.find(
+        (d: any) => d.id === selectedId && !d.is_restricted
+      );
+      if (!stillThere) {
+        const previouslyKnownName =
+          devices.find((d: any) => d.id === selectedId)?.name || null;
+        pendingSongRef.current = song;
+        setDevicePicker({ devices, missingName: previouslyKnownName });
+        return;
       }
-    }, 5000);
+    }
+
+    const started = await playSong(song);
+    setIsPlaying(started);
+  };
+
+  const handlePickDevice = async (deviceId: string) => {
+    spotifyPlaybackService.setSelectedDevice(deviceId);
+    setGameSettings({ ...useAppStore.getState().gameSettings, selectedDeviceId: deviceId });
+    setDevicePicker(null);
+    if (pendingSongRef.current) {
+      const song = pendingSongRef.current;
+      pendingSongRef.current = null;
+      const started = await playSong(song);
+      setIsPlaying(started);
+    }
   };
 
   // Play song when we have a round
@@ -1088,6 +1126,33 @@ export function GameControlPage() {
           </div>
         ))}
       </div>
+
+      {/* Stale Selected Device Overlay */}
+      {devicePicker && (
+        <div style={styles.deviceOverlay}>
+          <div style={styles.deviceOverlayCard}>
+            <div style={styles.deviceOverlayIcon}>📱</div>
+            <h2 style={styles.deviceOverlayTitle}>Pick a Spotify device</h2>
+            <p style={styles.deviceOverlayText}>
+              {devicePicker.missingName
+                ? `"${devicePicker.missingName}" isn't available right now.`
+                : 'The device you selected earlier isn\'t available right now.'}
+              {' '}Choose where to play this round.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+              {devicePicker.devices.map((d) => (
+                <button
+                  key={d.id}
+                  style={styles.endButton}
+                  onClick={() => handlePickDevice(d.id)}
+                >
+                  {d.name} ({d.type}){d.is_active ? ' • active' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* No Spotify Device Overlay */}
       {waitingForDevice && (

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore';
 import { spotifyAuthService } from '../services/spotifyAuthService';
@@ -6,9 +6,24 @@ import { spotifyAuthService } from '../services/spotifyAuthService';
 export function SpotifyLoginPage() {
   const navigate = useNavigate();
   const { setAccessToken } = useAppStore();
+  const [premiumWarning, setPremiumWarning] = useState<string | null>(null);
 
   useEffect(() => {
     let handled = false;
+
+    // Spotify Connect playback (used by this app) requires Premium. Warn the
+    // user up-front so they don't discover this mid-game.
+    const proceedAfterAuth = async (token: string) => {
+      setAccessToken(token);
+      const product = await spotifyAuthService.fetchUserProduct();
+      if (product && product !== 'premium') {
+        setPremiumWarning(
+          `Your Spotify account tier is "${product}". This game needs Spotify Premium to control playback — playback will fail when a round starts.`
+        );
+        return;
+      }
+      navigate('/playlists');
+    };
 
     const handleAuth = async () => {
       if (handled) return;
@@ -19,19 +34,17 @@ export function SpotifyLoginPage() {
         console.log('🔐 Processing OAuth callback...');
         const token = await spotifyAuthService.handleCallback();
         if (token) {
-          console.log('✅ Token received, navigating to playlists');
-          setAccessToken(token);
-          navigate('/playlists');
+          console.log('✅ Token received, checking account tier');
+          await proceedAfterAuth(token);
         } else {
           console.error('❌ Failed to get access token from callback');
           alert('Failed to authenticate with Spotify. Please try again.');
         }
       } else {
-        // Check if already authenticated
-        const token = spotifyAuthService.getAccessToken();
+        // Already authenticated? Refresh if needed, then check tier.
+        const token = await spotifyAuthService.ensureAccessToken();
         if (token) {
-          setAccessToken(token);
-          navigate('/playlists');
+          await proceedAfterAuth(token);
         }
       }
     };
@@ -54,6 +67,29 @@ export function SpotifyLoginPage() {
           <p style={styles.description}>
             Welcome to Hear and Guess Connect your Spotify account to create and host music quiz games.
           </p>
+
+          {premiumWarning && (
+            <div style={styles.premiumWarning}>
+              <strong style={styles.premiumWarningTitle}>Spotify Premium required</strong>
+              <p style={styles.premiumWarningText}>{premiumWarning}</p>
+              <button
+                style={styles.premiumWarningButton}
+                onClick={() => {
+                  spotifyAuthService.logout();
+                  setAccessToken(null);
+                  setPremiumWarning(null);
+                }}
+              >
+                Use a different account
+              </button>
+              <button
+                style={{ ...styles.premiumWarningButton, ...styles.premiumWarningContinue }}
+                onClick={() => navigate('/playlists')}
+              >
+                Continue anyway
+              </button>
+            </div>
+          )}
 
           <button onClick={handleLogin} style={styles.button}>
             Connect with Spotify
@@ -141,5 +177,40 @@ const styles: Record<string, React.CSSProperties> = {
     textDecoration: 'none',
     fontSize: '14px',
     fontWeight: '500',
+  },
+  premiumWarning: {
+    border: '2px solid #ffa500',
+    backgroundColor: 'rgba(255, 165, 0, 0.08)',
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '10px',
+  },
+  premiumWarningTitle: {
+    color: '#ffa500',
+    fontSize: '14px',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1px',
+  },
+  premiumWarningText: {
+    color: '#ffffff',
+    fontSize: '14px',
+    lineHeight: 1.5,
+    margin: 0,
+  },
+  premiumWarningButton: {
+    backgroundColor: 'transparent',
+    color: '#ffa500',
+    border: '2px solid #ffa500',
+    padding: '10px 14px',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1px',
+  },
+  premiumWarningContinue: {
+    color: '#a7a7a7',
+    borderColor: '#555',
   },
 };
